@@ -1,0 +1,22 @@
+[[source]]
+
+url = "https://pypi.python.org/simple"
+name = "pypi"
+verify_ssl = true
+
+
+[packages]
+
+Django = "==1.8.18"
+ipython = "==6.2.1"
+pytz = "*"
+"markdown2" = "*"
+
+
+[dev-packages]
+
+
+
+[requires]
+
+python_version = "3.5"

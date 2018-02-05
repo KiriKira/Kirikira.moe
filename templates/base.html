@@ -1,0 +1,477 @@
+{% load staticfiles %} {% load blog_tags %}
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="profile" href="https://gmpg.org/xfn/11">
+    <title>Kirikira.moe – 合缘奇缘，一期一会</title>
+    <link rel="stylesheet" id="materialize-google-font-1-css" href="{% static 'css/css' %}" type="text/css" media="all">
+    <link rel="stylesheet" id="materialize-google-font-2-css" href="{% static 'css/css(1)' %}" type="text/css" media="all">
+    <link rel="stylesheet" id="materialize-google-font-3-css" href="{% static 'css/css(2)' %}" type="text/css" media="all">
+    <link rel="stylesheet" id="mythemes-icons-css" href="{% static 'css/mythemes-icons.css' %}" type="text/css" media="all">
+    <link rel="stylesheet" id="mythemes-effects-css" href="{% static 'css/effects.css' %}" type="text/css" media="all">
+    <link rel="stylesheet" id="mythemes-header-css" href="{% static 'css/header.css' %}" type="text/css" media="all">
+    <link rel="stylesheet" id="mythemes-materialize-css" href="{% static 'css/materialize.min.css' %}" type="text/css" media="all">
+    <link rel="stylesheet" id="mythemes-typography-css" href="{% static 'css/typography.css' %}" type="text/css" media="all">
+    <link rel="stylesheet" id="mythemes-navigation-css" href="{% static 'css/navigation.css' %}" type="text/css" media="all">
+    <link rel="stylesheet" id="mythemes-nav-css" href="{% static 'css/nav.css' %}" type="text/css" media="all">
+    <link rel="stylesheet" id="mythemes-blog-css" href="{% static 'css/blog.css' %}" type="text/css" media="all">
+    <link rel="stylesheet" id="mythemes-forms-css" href="{% static 'css/forms.css' %}" type="text/css" media="all">
+    <link rel="stylesheet" id="mythemes-elements-css" href="{% static 'css/elements.css' %}" type="text/css" media="all">
+    <link rel="stylesheet" id="mythemes-widgets-css" href="{% static 'css/widgets.css' %}" type="text/css" media="all">
+    <link rel="stylesheet" id="mythemes-comments-css" href="{% static 'css/comments.css' %}" type="text/css" media="all">
+    <link rel="stylesheet" id="mythemes-comments-typography-css" href="{% static 'css/comments-typography.css' %}" type="text/css"
+        media="all">
+    <link rel="stylesheet" id="mythemes-footer-css" href="{% static 'css/footer.css' %}" type="text/css" media="all">
+    <link rel="stylesheet" id="mythemes-pretty-photo-css" href="{% static 'css/prettyPhoto.css' %}" type="text/css" media="all">
+    <link rel="stylesheet" id="mythemes-plugins-css" href="{% static 'css/plugins.css' %}" type="text/css" media="all">
+    <link rel="stylesheet" id="mythemes-style-css" href="{% static 'css/style.css' %}" type="text/css" media="all">
+    <link rel="stylesheet" id="jquery-lazyloadxt-spinner-css-css" href="{% static 'css/jquery.lazyloadxt.spinner.css' %}" type="text/css"
+        media="all">
+    <link rel="stylesheet" href="{% static 'css/highlights/github.css' %}">
+    <script type="text/javascript" src="{% static 'js/jquery.js' %}"></script>
+    <style></style>
+    <script type="text/javascript" src="{% static 'js/jquery-migrate.min.js' %}"></script>
+    <style type="text/css">
+        /* header color */
+
+        body {
+            background-color: #ffffff;
+        }
+
+        /* background image */
+
+        body>div.content {}
+
+        /* breadcrumbs space */
+
+        div.mythemes-page-header {
+            padding-top: 60px;
+            padding-bottom: 60px;
+        }
+    </style>
+
+    <style type="text/css" id="mythemes-background-color">
+        body>div.content {
+            background-color: #ffffff;
+        }
+    </style>
+
+
+
+    <style type="text/css" id="mythemes-header-headline-color" media="all">
+        div.mythemes-header a.header-headline {
+            color: #e53932
+        }
+    </style>
+
+    <style type="text/css" id="mythemes-header-description-color" media="all">
+        div.mythemes-header a.header-description {
+            color: rgba( 0, 0, 0, 0.55);
+        }
+
+        div.mythemes-header a.header-description:hover {
+            color: rgba( 0, 0, 0, 1.0);
+        }
+    </style>
+
+
+
+    <style type="text/css" id="mythemes-header-btn-1-color" media="all">
+        div.mythemes-header.parallax-container div.mythemes-header-buttons a.btn-large.mythemes-first-button {
+            color: #ffffff;
+        }
+    </style>
+
+    <style type="text/css" id="mythemes-header-btn-1-bkg-color" media="all">
+        div.mythemes-header.parallax-container div.mythemes-header-buttons a.btn-large.mythemes-first-button {
+            background-color: #4caf50;
+        }
+    </style>
+
+    <style type="text/css" id="mythemes-header-btn-1-bkg-h-color" media="all">
+        div.mythemes-header.parallax-container div.mythemes-header-buttons a.btn-large.mythemes-first-button:hover {
+            background-color: #43a047;
+        }
+    </style>
+
+
+    <style type="text/css" id="mythemes-header-btn-2-color" media="all">
+        div.mythemes-header.parallax-container div.mythemes-header-buttons a.btn-large.mythemes-second-button {
+            color: #ffffff;
+        }
+    </style>
+
+    <style type="text/css" id="mythemes-header-btn-2-bkg-color" media="all">
+        div.mythemes-header.parallax-container div.mythemes-header-buttons a.btn-large.mythemes-second-button {
+            background-color: #e53935;
+        }
+    </style>
+
+    <style type="text/css" id="mythemes-header-btn-2-bkg-h-color" media="all">
+        div.mythemes-header.parallax-container div.mythemes-header-buttons a.btn-large.mythemes-second-button:hover {
+            background-color: #d32f2f;
+        }
+    </style>
+
+
+    <style type="text/css" id="mythemes-custom-css">
+    </style>
+    <style type="text/css" id="custom-background-css">
+        body.custom-background {
+            background-color: #ffffff;
+        }
+    </style>
+    <style type="text/css" style="display: none !important;">
+        #sp-fw-container {
+            z-index: 999999!important;
+            text-align: left!important;
+        }
+
+        #sp-fw-container * {
+            font-size: 13px!important;
+            color: black!important;
+            float: none!important;
+        }
+
+        #sp-fw-main-head {
+            position: relative!important;
+            top: 0!important;
+            left: 0!important;
+        }
+
+        #sp-fw-span-info {
+            position: absolute!important;
+            right: 1px!important;
+            top: 0!important;
+            font-size: 10px!important;
+            line-height: 10px!important;
+            background: none!important;
+            font-style: italic!important;
+            color: #5a5a5a!important;
+            text-shadow: white 0px 1px 1px!important;
+        }
+
+        #sp-fw-container input {
+            vertical-align: middle!important;
+            display: inline-block!important;
+            outline: none!important;
+            height: auto !important;
+            padding: 0px !important;
+            margin-bottom: 0px !important;
+        }
+
+        #sp-fw-container input[type="number"] {
+            width: 50px!important;
+            text-align: left!important;
+        }
+
+        #sp-fw-container input[type="checkbox"] {
+            border: 1px solid #B4B4B4!important;
+            padding: 1px!important;
+            margin: 3px!important;
+            width: 13px!important;
+            height: 13px!important;
+            background: none!important;
+            cursor: pointer!important;
+            visibility: visible !important;
+            position: static !important;
+        }
+
+        #sp-fw-container input[type="button"] {
+            border: 1px solid #ccc!important;
+            cursor: pointer!important;
+            background: none!important;
+            width: auto!important;
+            height: auto!important;
+        }
+
+        #sp-fw-container li {
+            list-style: none!important;
+            margin: 3px 0!important;
+            border: none!important;
+            float: none!important;
+        }
+
+        #sp-fw-container fieldset {
+            border: 2px groove #ccc!important;
+            -moz-border-radius: 3px!important;
+            border-radius: 3px!important;
+            padding: 4px 9px 6px 9px!important;
+            margin: 2px!important;
+            display: block!important;
+            width: auto!important;
+            height: auto!important;
+        }
+
+        #sp-fw-container legend {
+            line-height: 20px !important;
+            margin-bottom: 0px !important;
+        }
+
+        #sp-fw-container fieldset>ul {
+            padding: 0!important;
+            margin: 0!important;
+        }
+
+        #sp-fw-container ul#sp-fw-a_useiframe-extend {
+            padding-left: 40px!important;
+        }
+
+        #sp-fw-rect {
+            position: relative!important;
+            top: 0!important;
+            left: 0!important;
+            float: right!important;
+            height: 10px!important;
+            width: 10px!important;
+            padding: 0!important;
+            margin: 0!important;
+            -moz-border-radius: 3px!important;
+            border-radius: 3px!important;
+            border: 1px solid white!important;
+            -webkit-box-shadow: inset 0 5px 0 rgba(255, 255, 255, 0.3), 0 0 3px rgba(0, 0, 0, 0.8)!important;
+            -moz-box-shadow: inset 0 5px 0 rgba(255, 255, 255, 0.3), 0 0 3px rgba(0, 0, 0, 0.8)!important;
+            box-shadow: inset 0 5px 0 rgba(255, 255, 255, 0.3), 0 0 3px rgba(0, 0, 0, 0.8)!important;
+            opacity: 0.8!important;
+        }
+
+        #sp-fw-dot,
+        #sp-fw-cur-mode {
+            position: absolute!important;
+            z-index: 9999!important;
+            width: 5px!important;
+            height: 5px!important;
+            padding: 0!important;
+            -moz-border-radius: 3px!important;
+            border-radius: 3px!important;
+            border: 1px solid white!important;
+            opacity: 1!important;
+            -webkit-box-shadow: inset 0 -2px 1px rgba(0, 0, 0, 0.3), inset 0 2px 1px rgba(255, 255, 255, 0.3), 0px 1px 2px rgba(0, 0, 0, 0.9)!important;
+            -moz-box-shadow: inset 0 -2px 1px rgba(0, 0, 0, 0.3), inset 0 2px 1px rgba(255, 255, 255, 0.3), 0px 1px 2px rgba(0, 0, 0, 0.9)!important;
+            box-shadow: inset 0 -2px 1px rgba(0, 0, 0, 0.3), inset 0 2px 1px rgba(255, 255, 255, 0.3), 0px 1px 2px rgba(0, 0, 0, 0.9)!important;
+        }
+
+        #sp-fw-dot {
+            right: -3px!important;
+            top: -3px!important;
+        }
+
+        #sp-fw-cur-mode {
+            left: -3px!important;
+            top: -3px!important;
+            width: 6px!important;
+            height: 6px!important;
+        }
+
+        #sp-fw-content {
+            padding: 0!important;
+            margin: 5px 5px 0 0!important;
+            -moz-border-radius: 3px!important;
+            border-radius: 3px!important;
+            border: 1px solid #A0A0A0!important;
+            -webkit-box-shadow: -2px 2px 5px rgba(0, 0, 0, 0.3)!important;
+            -moz-box-shadow: -2px 2px 5px rgba(0, 0, 0, 0.3)!important;
+            box-shadow: -2px 2px 5px rgba(0, 0, 0, 0.3)!important;
+        }
+
+        #sp-fw-main {
+            padding: 5px!important;
+            border: 1px solid white!important;
+            -moz-border-radius: 3px!important;
+            border-radius: 3px!important;
+            background-color: #F2F2F7!important;
+            background: -moz-linear-gradient(top, #FCFCFC, #F2F2F7 100%)!important;
+            background: -webkit-gradient(linear, 0 0, 0 100%, from(#FCFCFC), to(#F2F2F7))!important;
+        }
+
+        #sp-fw-foot {
+            position: relative!important;
+            left: 0!important;
+            right: 0!important;
+            min-height: 20px!important;
+        }
+
+        #sp-fw-savebutton {
+            position: absolute!important;
+            top: 0!important;
+            right: 2px!important;
+        }
+
+        #sp-fw-container .sp-fw-spanbutton {
+            border: 1px solid #ccc!important;
+            -moz-border-radius: 3px!important;
+            border-radius: 3px!important;
+            padding: 2px 3px!important;
+            cursor: pointer!important;
+            background-color: #F9F9F9!important;
+            -webkit-box-shadow: inset 0 10px 5px white!important;
+            -moz-box-shadow: inset 0 10px 5px white!important;
+            box-shadow: inset 0 10px 5px white!important;
+        }
+    </style>
+</head>
+
+<body class="home blog logged-in custom-background wp-custom-logo">
+    <header class="mythemes-miss-header-image">
+
+        <nav class="white mythemes-topper" role="navigation">
+            <div class="nav-wrapper container">
+
+                <a href="{% url 'blog:index' %}" data-activates="nav-mobile" class="button-collapse">
+                    <i class="mythemes-icon-menu"></i>
+                </a>
+
+                <div class="mythemes-blog-identity">
+                    <div class="mythemes-blog-logo" style="margin-top: 0px; margin-bottom: 0px;">
+                        <a href="{% url 'blog:index' %}" class="custom-logo-link" rel="home" itemprop="url">
+                            <img width="2569" height="487" src="{% static 'img/banner.jpg' %}" class="custom-logo lazy-loaded" alt="Kirikira.moe" itemprop="logo"
+                                sizes="(max-width: 2569px) 100vw, 2569px" data-src="{% static 'img/banner.jpg' %}" data-lazy-type="image"
+                                data-srcset="" srcset="{% static 'img/banner.jpg' %} 2569w, {% static 'img/banner-150x28.jpg' %} 150w, {% static 'img/banner-300x57.jpg' %} 300w, {% static 'img/banner-768x146.jpg' %} 768w">
+                        </a>
+                    </div>
+                    <a class="mythemes-blog-title" href="{% url 'blog:index' %}" title="Kirikira.moe - 合缘奇缘，一期一会">Kirikira.moe</a>
+                    <a class="mythemes-blog-description" href="{% url 'blog:index' %}" title="Kirikira.moe - 合缘奇缘，一期一会">合缘奇缘，一期一会</a>
+                </div>
+            </div>
+        </nav>
+
+
+        <div class="content">
+
+            <div class="container">
+                <div class="row">
+                    {% block main %}
+                    {% endblock main %}
+                    <aside class="col s12 m12 l3 mythemes-sidebar sidebar-to-right">
+                        <div id="categories-1" class="widget widget_categories">
+                        <img src="{%static 'img/kiri.webp'%}"  alt="[video-to-webp output image]" width="100%" height="100%">
+                            <ul><li class="cat-item cat-item-1"><a href="{% url 'blog:detail' 1 %}" style="font-weight: bold">Love Kiri, NOW!</a></li></ul>
+                        </div>
+
+                        <div id="categories-2" class="widget widget_categories">
+                            <h4 class="widget-title">分类</h4>
+                            {% get_categories as category_list %}
+                            <ul>
+                                {% for category in category_list %}
+                                <li class="cat-item cat-item-1">
+                                    <a href="#">{{ category.name }}
+                                        <span class="post-count"></span>
+                                    </a>
+                                </li>
+                                {% empty %} 暂无分类！ {% endfor %}
+                            </ul>
+                        </div>
+                        <div id="meta-2" class="widget widget_meta">
+                            <h4 class="widget-title">功能</h4>
+                            <ul>
+                                <li><a href="{% url 'blog:rss' %}">RSS</a></li>
+                            </ul>
+
+                        </div>
+                        <div id="nav_menu-2" class="widget widget_nav_menu">
+                            <h4 class="widget-title">友情链接</h4>
+                            <div class="menu-%e5%8f%8b%e6%83%85%e9%93%be%e6%8e%a5-container">
+                                <ul id="menu-%e5%8f%8b%e6%83%85%e9%93%be%e6%8e%a5" class="menu">
+                                    <li id="menu-item-49" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-49">
+                                        <a href="https://hudbt.hust.edu.cn/torrents.php?page=3">华科-蝴蝶PT</a>
+                                    </li>
+                                    <li id="menu-item-50" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-50">
+                                        <a href="https://pt.whu.edu.cn/torrents.php">武大-珞樱PT</a>
+                                    </li>
+                                    <li id="menu-item-111" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-111">
+                                        <a href="https://sometimesnaive.org/">南琴浪博客</a>
+                                    </li>
+                                    <li id="menu-item-113" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-113">
+                                        <a href="https://blog.yangmame.top/">YangMame</a>
+                                    </li>
+                                    <li id="menu-item-126" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-126">
+                                        <a href="https://linkthis.ml/">link博客</a>
+                                    </li>
+                                    <li id="menu-item-126" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-126">
+                                        <a href="https://wwyqianqian.github.io/">千千博客</a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+            </div>
+        </div>
+        <footer>
+
+            <aside class="mythemes-footer-sidebars">
+
+                <div class="container">
+                    <div class="row">
+
+                        <div class="col s12 m6 l3">
+                        </div>
+
+                        <div class="col s12 m6 l3">
+                        </div>
+
+                        <div class="col s12 m6 l3">
+                        </div>
+
+                        <div class="col s12 m6 l3">
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <div class="mythemes-dark-mask">
+
+                <div class="mythemes-copyright">
+
+                    <div class="container">
+                        <div class="row">
+                            <div class="col s12">
+                                <p>
+                                    <span class="copyright">Copyright © 2018 Kiri. Written with Django.</span>
+                                    <span>Designed by
+                                        <a href="http://mythem.es/" target="_blank" title="myThem.es" class="mythemes">myThem.es</a>.</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <script>
+
+            </script>
+        </footer>
+        <script type="text/javascript" src="{% static 'js/imagesloaded.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'js/masonry.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'js/functions.js' %}"></script>
+        <script type="text/javascript" src="{% static 'js/materialize.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'js/jquery.prettyPhoto.js' %}"></script>
+        <script type="text/javascript" src="{% static 'js/jquery.prettyPhoto.settings.js' %}"></script>
+        <script type="text/javascript">
+            /* <![CDATA[ */
+            var a3_lazyload_params = { "apply_images": "1", "apply_videos": "1" };
+            var a3_lazyload_params = { "apply_images": "1", "apply_videos": "1" };
+/* ]]> */
+        </script>
+        <script type="text/javascript" src="{% static 'js/jquery.lazyloadxt.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'js/jquery.lazyloadxt.srcset.min.js' %}"></script>
+        <script type="text/javascript">
+            /* <![CDATA[ */
+            var a3_lazyload_extend_params = { "edgeY": "0" };
+            var a3_lazyload_extend_params = { "edgeY": "0" };
+/* ]]> */
+        </script>
+
+
+
+        <div class="drag-target" style="left: 0px; touch-action: pan-y; -webkit-user-drag: none; -webkit-tap-highlight-color: rgba(0, 0, 0, 0);"></div>
+        <div class="hiddendiv common"></div>
+
+</body>
+<div></div>
+
+</html>

@@ -1,0 +1,92 @@
+{% extends 'base.html' %} {% block main %}
+<section class="col s12 m12 l9 mythemes-classic">
+    <article class="post-125 post type-post status-publish format-standard hentry category-uncategorized">
+
+        <h1 class="post-title">{{post.title}}</h1>
+
+        <div class="mythemes-top-meta meta">
+
+            <time datetime="{{ post.created_time }}">
+                <i class="mythemes-icon-calendar"></i>on {{ post.created_time }}</time>
+            <div class="clear"></div>
+
+
+            <a class="author waves-effect waves-dark grey lighten-4" href="{% url 'blog:index' %}" title="written by {{ post.author }}">
+                <i class="mythemes-icon-user-1"></i>by {{ post.author }} </a>
+
+        </div>
+
+        <div class="post-content">
+            {{ post.body | safe }}
+            <div class="clearfix"></div>
+        </div>
+    </article>
+
+    <div id="comments" class="comments-list user-logged-in">
+        <div class="mythemes-comments">
+            
+            <ol>
+                <li class="comment even thread-even depth-1" >
+                    {% for comment in comment_list %}
+                    <div id="{{ comment.pk }}" class="comment-box">
+                        <header>
+
+                            <span class="comment-meta">
+                                <time datetime="{{ comment.created_time }}" class="comment-time">{{ comment.created_time }}</time>
+                            </span>
+
+                            <cite>
+                                <a href="{{ comment.url }}" rel="external nofollow" class="url">{{comment.name}}</a>
+                            </cite>
+                            <div class="clear"></div>
+                        </header>
+                        <div class="comment-quote">{{ comment.text| safe | escape }}</div>
+                    </div>
+                    {% empty %} 暂无评论 {% endfor %}
+
+                </li>
+
+            </ol>
+        </div>
+
+        <div class="mythemes-comments">
+            <div id="respond" class="comment-respond">
+                <h3 id="reply-title" class="comment-reply-title">Leave a reply
+                </h3>
+                <form action="{% url 'comments:post_comment' post.pk %}" method="post" id="commentform" class="comment-form">
+                    <button type="submit" class="btn waves-effect waves-light submit-comment">Comment</button>
+                    <p class="comment-notes">Your email address will not be published.</p>
+                    {% csrf_token %}
+                    <div class="textarea row-fluid">
+                        <p class="comment-form-comment textarea user-not-logged-in">
+                            <label for="{{ form.text.id_for_label }}">THE COMMENT BODY</label>
+                            {{ form.text }}
+                            {{ form.text.errors }}
+                        </p>
+                    </div>
+                    <div class="field">
+                        <p class="comment-form-author input">
+                                <label for="{{ form.name.id_for_label }}">NAME：</label>
+                                {{ form.name }}
+                                {{ form.name.errors }}
+                        </p>
+                        <p class="comment-form-email input">
+                                <label for="{{ form.email.id_for_label }}">EMAIL：</label>
+                                {{ form.email }}
+                                {{ form.email.errors }}
+                        </p>
+                        <p class="comment-form-url input">
+                                <label for="{{ form.url.id_for_label }}">URL or GITHUB (no necessity)：</label>
+                                {{ form.url }}
+                                {{ form.email.errors }}
+                        </p>
+                    </div>
+                </form>
+            </div>
+            <div class="clearfix"></div>
+        </div>
+    </div>
+
+
+</section>
+{% endblock main %}

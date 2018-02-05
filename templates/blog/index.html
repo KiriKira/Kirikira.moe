@@ -1,0 +1,71 @@
+{% extends 'base.html' %} {% block main %}
+<section class="col s12 m12 l9 mythemes-classic mythemes-classic">
+    {% for post in post_list %}
+    <article class="post-125 post type-post status-publish format-standard hentry category-uncategorized">
+
+        <h2 class="post-title">
+            <a href="{{ post.get_absolute_url }}" title="{{ post.title }}">{{ post.title }}</a>
+        </h2>
+        <div class="mythemes-top-meta meta">
+
+            <time datetime="{{ post.created_time }}">
+                <i class="mythemes-icon-calendar"></i>on {{ post.created_time }}</time>
+            <div class="clear"></div>
+
+            <ul class="post-categories">
+                <li>
+                    <a href="{% url 'blog:index' %}" rel="category tag" class="waves-effect waves-light">{{ post.category.name }}</a>
+                </li>
+            </ul>
+
+            <a class="author waves-effect waves-dark grey lighten-4" href="{% url 'blog:index' %}" title="written by Kiri">
+                <i class="mythemes-icon-user-1"></i>{{ post.author }} </a>
+
+        </div>
+
+        <div class="post-content">
+            <p>{{ post.excerpt }}</p>
+            <a href="{{ post.get_absolute_url }}" class="more-link waves-effect waves-light">
+                <span class="hide-on-small-only">Read More</span>
+                <span class="hide-on-med-and-up">→</span>
+            </a>
+            <div class="clearfix"></div>
+        </div>
+    </article>
+
+    {% empty %}
+    <div class="no-post">暂时还没有发布的文章！</div>
+    {% endfor %}
+
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="pagination aligncenter">
+
+                <nav class="mythemes-nav-inline">
+                    <ul class="page-numbers">
+                        {% for page_number in pages %}
+                        {% ifequal page_number page %}
+                        <li>
+                            <span class="page-numbers current">{{ page_number }}</span>
+                        </li>
+                        {% else %}
+                        <li>
+                                <a class="page-numbers waves-effect waves-light" href="{% url 'blog:index_page' page_number %}">{{ page_number }}</a>
+                            </li>
+                        {% endifequal %}
+
+                        {% endfor %}
+                        {% if page != final_page %}
+                        <li>
+                            <a class="next page-numbers waves-effect waves-light" href="{% url 'blog:index_page' next_page %}">Next
+                                <i class="mythemes-icon-right-open-1"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock main %}
