@@ -23,8 +23,8 @@
     </article>
 
     <div id="comments" class="comments-list user-logged-in">
+        {% if comment_list %}
         <div class="mythemes-comments">
-            
             <ol>
                 <li class="comment even thread-even depth-1" >
                     {% for comment in comment_list %}
@@ -42,13 +42,13 @@
                         </header>
                         <div class="comment-quote">{{ comment.text| safe | escape }}</div>
                     </div>
-                    {% empty %} 暂无评论 {% endfor %}
+                    {% endfor %}
 
                 </li>
-
+                
             </ol>
         </div>
-
+        {% endif %}
         <div class="mythemes-comments">
             <div id="respond" class="comment-respond">
                 <h3 id="reply-title" class="comment-reply-title">Leave a reply

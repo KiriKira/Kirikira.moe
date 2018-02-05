@@ -29,6 +29,8 @@ def index(request, page=1):
 
 def detail(request, pk):
     post = get_object_or_404(Post, pk=pk)
+    if post.status == 'draft':
+        return my_404_not_found(request)
     post.body = markdown2.markdown(post.body,
                                    extras=['fenced-code-blocks'])
     form = CommentForm()
