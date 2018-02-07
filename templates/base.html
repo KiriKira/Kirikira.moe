@@ -349,8 +349,8 @@
                     {% endblock main %}
                     <aside class="col s12 m12 l3 mythemes-sidebar sidebar-to-right">
                         <div id="categories-1" class="widget widget_categories">
-                        <img src="{%static 'img/kiri.webp'%}"  alt="[video-to-webp output image]" width="100%" height="100%">
-                            <ul><li class="cat-item cat-item-1"><a href="{% url 'blog:detail' 1 %}" style="font-weight: bold">Love Kiri, NOW!</a></li></ul>
+                        <video src="{%static 'img/kiri.mp4'%}" width="100%" height="100%" autoplay loop > </video>
+                            <ul><li class="cat-item cat-item-1"><a href="{% url 'blog:detail' 1 %}" style="font-weight: bold">Love Kiri!</a></li></ul>
                         </div>
 
                         <div id="categories-2" class="widget widget_categories">
@@ -359,7 +359,7 @@
                             <ul>
                                 {% for category in category_list %}
                                 <li class="cat-item cat-item-1">
-                                    <a href="#">{{ category.name }}
+                                    <a href="{% url 'blog:category' category.pk %}">{{ category.name }}
                                         <span class="post-count"></span>
                                     </a>
                                 </li>
@@ -377,24 +377,28 @@
                             <h4 class="widget-title">友情链接</h4>
                             <div class="menu-%e5%8f%8b%e6%83%85%e9%93%be%e6%8e%a5-container">
                                 <ul id="menu-%e5%8f%8b%e6%83%85%e9%93%be%e6%8e%a5" class="menu">
-                                    <li id="menu-item-49" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-49">
-                                        <a href="https://hudbt.hust.edu.cn/torrents.php?page=3">华科-蝴蝶PT</a>
+                                    
                                     </li>
-                                    <li id="menu-item-50" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-50">
-                                        <a href="https://pt.whu.edu.cn/torrents.php">武大-珞樱PT</a>
+                                    <li id="menu-item-1" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-111">
+                                        <a href="https://sometimesnaive.org/">南琴浪</a>
                                     </li>
-                                    <li id="menu-item-111" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-111">
-                                        <a href="https://sometimesnaive.org/">南琴浪博客</a>
-                                    </li>
-                                    <li id="menu-item-113" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-113">
+                                    <li id="menu-item-2" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-113">
                                         <a href="https://blog.yangmame.top/">YangMame</a>
                                     </li>
                                     <li id="menu-item-126" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-126">
-                                        <a href="https://linkthis.ml/">link博客</a>
+                                        <a href="https://linkthis.ml/">link</a>
                                     </li>
                                     <li id="menu-item-126" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-126">
-                                        <a href="https://wwyqianqian.github.io/">千千博客</a>
+                                        <a href="https://wwyqianqian.github.io/">千千</a>
                                     </li>
+                                    <li id="menu-item-126" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-126">
+                                        <a href="https://ekyu.moe/">Equim</a>
+                                    </li>
+                                    <li id="menu-item-49" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-49">
+                                        <a href="https://hudbt.hust.edu.cn/torrents.php?page=3/">华科-蝴蝶PT</a>
+                                    </li>
+                                    <li id="menu-item-50" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-50">
+                                        <a href="https://pt.whu.edu.cn/torrents.php/">武大-珞樱PT</a>
                                 </ul>
                             </div>
                         </div>
