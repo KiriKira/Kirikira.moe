@@ -37,10 +37,11 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'blog',
-    'comments',
     'django.contrib.sites',
     'django.contrib.sitemaps',
+    'blog',
+    'comments',
+    'aplayer'
 )
 
 MIDDLEWARE_CLASSES = (
@@ -107,3 +108,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.8/howto/static-files/
 
 STATIC_URL = '/static/'
+MEIDA_URL = '/media/'
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'static/').replace('//', '/')
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media/').replace('//', '/')
