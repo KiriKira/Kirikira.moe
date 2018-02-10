@@ -10,11 +10,11 @@
 
 [uBlock](https://chrome.google.com/webstore/detail/ublock-origin/cjpalhdlnbpafiamejdnhcphjbkeiagm?utm_source=chrome-ntp-icon)是一款流行的浏览器去广告扩展，在各大浏览器商店(Chrome,Firefox,Edge)上都可以找到，同类软件中，在前有他的前辈ABP（AdBlockPlus），在后有他的兄弟uMatrix.与ABP相比，他的性能和占用情况更令人满意（参考[uBlock vs. ABP](https://github.com/gorhill/uBlock/wiki/uBlock-vs.-ABP:-efficiency-compared)）;与uMatrix相比，他的功能显得没有那么强大，但是却有开箱即用的优秀体验。上两张对比图：
 
-![](https://i.yusa.me/KyvvyloqBEOG.jpg)<noscript><img class="aligncenter" src="https://i.yusa.me/KyvvyloqBEOG.jpg" width="451" height="225" /></noscript>
+![](https://i.yusa.me/KyvvyloqBEOG.jpg)
 
 Before(还有无穷无尽的弹窗特效截不出来）
 
-![](//husterxhuster.ml/wp-content/plugins/a3-lazy-load/assets/images/lazy_placeholder.gif)<noscript><img class="aligncenter" src="https://i.yusa.me/XJgv33M8yjj3.jpg" width="459" height="234" /></noscript>
+![](https://i.yusa.me/XJgv33M8yjj3.jpg)
 
 After
 
@@ -40,12 +40,10 @@ Tampermonkey
 
 [Stylish](https://chrome.google.com/webstore/detail/stylish-custom-themes-for/fjnbnpbmkenffdnngjfgmeleoegfcffe?utm_source=chrome-ntp-icon)是一款可自定义网页样式的扩展。什么叫网页样式？多的不说了，是骡子是马来两张图瞅瞅。
 
-![](//husterxhuster.ml/wp-content/plugins/a3-lazy-load/assets/images/lazy_placeholder.gif)<noscript><img class="aligncenter" src="https://i.yusa.me/R78YgnLPmaMR.jpg" width="558" height="284" /></noscript>
-
+![](https://i.yusa.me/R78YgnLPmaMR.jpg)
 Before
 
-![](//husterxhuster.ml/wp-content/plugins/a3-lazy-load/assets/images/lazy_placeholder.gif)<noscript><img class="aligncenter" src="https://i.yusa.me/azLleqvamYv8.jpg" width="566" height="286" /></noscript>
-
+![https://i.yusa.me/azLleqvamYv8.jpg]
 After
 
 ***一键管理所有扩展***

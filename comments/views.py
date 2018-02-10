@@ -1,14 +1,11 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from blog.models import Post
-
-from .models import Comment
 from .forms import CommentForm
 
 
 def post_comment(request, post_pk):
 
     post = get_object_or_404(Post, pk=post_pk)
-
 
     if request.method == 'POST':
 
@@ -20,9 +17,7 @@ def post_comment(request, post_pk):
 
             comment.post = post
 
-
             comment.save()
-
 
             return redirect(post)
 

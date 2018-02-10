@@ -1,4 +1,33 @@
-{% extends 'base.html' %} {% block main %}
+{% extends 'base.html' %} 
+{% block js %}
+    {% if music %}
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/aplayer/1.6.0/APlayer.min.js"></script>
+    {% endif %}
+{% endblock js %}
+{% block music %}
+    {% if music %}
+        <div id="player" class="aplayer"></div>
+            <script>
+                    const ap1 = new APlayer({
+                        element: document.getElementById('player'),
+                        narrow: false,
+                        autoplay: true,
+                        showlrc: false,
+                        mutex: true,
+                        theme: '#e6d0b2',
+                        preload: 'metadata',
+                        mode: 'circulation',
+                        music: {
+                            title: '{{ music.title }}',
+                            author: '{{ music.author }}',
+                            url: '{{ music.url }}',
+                            pic: '{{ music.pic }}'
+                        }
+                    });
+                </script>
+    {% endif %}
+    {% endblock music %}
+{% block main %}
 <section class="col s12 m12 l9 mythemes-classic">
     <article class="post-125 post type-post status-publish format-standard hentry category-uncategorized">
 
@@ -15,7 +44,6 @@
                 <i class="mythemes-icon-user-1"></i>by {{ post.author }} </a>
 
         </div>
-
         <div class="post-content">
             {{ post.body | safe }}
             <div class="clearfix"></div>

@@ -1,0 +1,10 @@
+<uwsgi>
+    <socket>:8001</socket>
+    <chdir>/home/kiri/Kirikira.moe/</chdir>
+    <module>kirikira.wsgi</module>
+    <master>1</master>
+    <processes>1</processes> <!-- 进程数 -->
+    <buffer-size>32768</buffer-size>
+    <pidfile>/home/kiri/Kirikira.moe/file.pid</pidfile>
+</uwsgi>
+
