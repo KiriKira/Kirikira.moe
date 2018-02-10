@@ -13,7 +13,8 @@ class Player(models.Model):
     url = models.URLField()
     pic = models.URLField()
 
-    post = models.OneToOneField('blog.Post', blank=True, null=True)
+    post = models.OneToOneField('blog.Post', blank=True, null=True,
+                                related_name='player')
 
     def __str__(self):
         return self.title
