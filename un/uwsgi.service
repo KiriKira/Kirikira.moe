@@ -1,0 +1,17 @@
+[Unit]
+Description=uWSGI Emperor
+After=syslog.target
+
+[Service]
+User=kiri
+ExecStart=/home/kiri/.local/share/virtualenvs/Kirikira.moe-Jtvx5JgR/bin/uwsgi -x /home/kiri/Kirikira.moe/uwsgi.xml
+ExecReload=/bin/kill -HUP $MAINPID
+ExecStop=/bin/kill -INT $MAINPID
+Restart=always
+Type=notify
+StandardError=syslog
+NotifyAccess=all
+KillSignal=SIGQUIT
+
+[Install]
+WantedBy=multi-user.target

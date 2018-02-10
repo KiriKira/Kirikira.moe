@@ -6,7 +6,7 @@ import markdown2
 
 def category(request, pk):
     cate = get_object_or_404(Category, pk=pk)
-    post_list = Post.published.filter(category=cate).order_by('-created_time')
+    post_list = Post.published.filter(category=cate).order_by('-pk')
     return render(request, 'blog/index.html', context={'post_list': post_list})
 
 
@@ -17,7 +17,7 @@ def index(request, page=1):
     pages = range(1, final_page + 1)
     if page not in pages:
         return my_404_not_found(request)
-    post_list = Post.published.all().order_by('-created_time')[(10 * page - 10): (10 * page - 1)]
+    post_list = Post.published.all().order_by('-pk')[(10 * page - 10): (10 * page - 1)]
     next_page = page + 1
 
     return render(request, 'blog/index.html', context={'post_list': post_list,
@@ -34,6 +34,9 @@ def detail(request, pk):
     post.body = markdown2.markdown(post.body,
                                    extras=['fenced-code-blocks'])
     form = CommentForm()
+
+    music = post.get_music()
+
     # 获取这篇 post 下的全部评论
     comment_list = post.comment_set.all()
     comment_list_md = []
@@ -44,7 +47,8 @@ def detail(request, pk):
     # 将文章、表单、以及文章下的评论列表作为模板变量传给 detail.html 模板，以便渲染相应数据。
     context = {'post': post,
                'form': form,
-               'comment_list': comment_list_md
+               'comment_list': comment_list_md,
+               'music': music
                }
     return render(request, 'blog/detail.html', context=context)
 

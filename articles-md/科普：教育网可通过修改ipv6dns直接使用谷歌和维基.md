@@ -10,8 +10,8 @@ __注：现在已有明确计划普及ipv6__
 
 在右下角的网络连接图标上右键->打开网络和共享中心->更改适配器设置->WLAN，右键，属性->点击Internet 协议版本6（TCP/IPv6）->属性->使用下面的DNS服务器地址，填入：
 
->首选：2001:4860:4860::8888  
-备用：2001:4860:4860::8844
+>首选：`2001:4860:4860::8888`  
+>备用：`2001:4860:4860::8844`
 
 点击确认就修改好啦~为了保险起见，还可以在刷新一下dns缓存，在cmd里输入
 
@@ -23,9 +23,12 @@ ipconfig /flushdns
 
 此法可解需要利用google或者wiki查阅资料的大学生的燃眉之急，不过我并不能保证它的稳定性，很多事情我们还是需要借助代理来完成。
 
-说句题外话，现在你已经知道该如何修改dns了，建议你将ipv4dns也修改一下，尽管不一定能帮助你科学上网，但可以有效地让你免于被dns劫持。我推荐中科大的DNS，或者BaiDNS。当然，你也可以使用dnscrypt, dnsmasq等工具,但是反正会用这些的就不用我讲啦。
+说句题外话，现在你已经知道该如何修改dns了，建议你将ipv4dns也修改一下，尽管不一定能帮助你科学上网，但可以有效地让你免于被dns劫持。我推荐中科大的DNS，或者BaiDNS。当然，也推荐可以使用dnscrypt, dnsmasq等工具,但是反正会用这些的就不用我讲啦。
 
-__注：如果咕果的DNS也已经无法使用的话，可以直接使用[ipv6-host](https://github.com/lennylxx/ipv6-hosts)__
+__注：如果咕果的DNS也已经无法使用的话，可以直接使用[ipv6-host](https://github.com/lennylxx/ipv6-hosts).具体方法为：__
+
+>下载[hosts](https://raw.githubusercontent.com/lennylxx/ipv6-hosts/master/hosts)到本地，直接替换本机的hosts文件。  
+>Win10的hosts位于`C:\WINDOWS\system32\drivers\etc\hosts`，而Linux的则是`/etc/hosts`
 
 下篇文章就等开学啦，可能会写Chrome食用介绍或者对下载和找资源那两篇文章写一个续。
 

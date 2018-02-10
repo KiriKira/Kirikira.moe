@@ -8,10 +8,12 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="profile" href="https://gmpg.org/xfn/11">
-    <title>Kirikira.moe – 合缘奇缘，一期一会</title>
+    <title>It's me, Kiri!</title>
+    <!----
     <link rel="stylesheet" id="materialize-google-font-1-css" href="{% static 'css/css' %}" type="text/css" media="all">
     <link rel="stylesheet" id="materialize-google-font-2-css" href="{% static 'css/css(1)' %}" type="text/css" media="all">
     <link rel="stylesheet" id="materialize-google-font-3-css" href="{% static 'css/css(2)' %}" type="text/css" media="all">
+    ---->
     <link rel="stylesheet" id="mythemes-icons-css" href="{% static 'css/mythemes-icons.css' %}" type="text/css" media="all">
     <link rel="stylesheet" id="mythemes-effects-css" href="{% static 'css/effects.css' %}" type="text/css" media="all">
     <link rel="stylesheet" id="mythemes-header-css" href="{% static 'css/header.css' %}" type="text/css" media="all">
@@ -33,6 +35,11 @@
     <link rel="stylesheet" id="jquery-lazyloadxt-spinner-css-css" href="{% static 'css/jquery.lazyloadxt.spinner.css' %}" type="text/css"
         media="all">
     <link rel="stylesheet" href="{% static 'css/highlights/github.css' %}">
+    {% block css %}
+    {% endblock css %}
+    {% block js %}
+    {% endblock js %}
+    <link rel="shortcut icon" href="https://www.debian.org/favicon.ico">
     <script type="text/javascript" src="{% static 'js/jquery.js' %}"></script>
     <style></style>
     <script type="text/javascript" src="{% static 'js/jquery-migrate.min.js' %}"></script>
@@ -344,6 +351,8 @@
         <div class="content">
 
             <div class="container">
+                {% block music %}
+                {% endblock music %}
                 <div class="row">
                     {% block main %}
                     {% endblock main %}
@@ -377,8 +386,6 @@
                             <h4 class="widget-title">友情链接</h4>
                             <div class="menu-%e5%8f%8b%e6%83%85%e9%93%be%e6%8e%a5-container">
                                 <ul id="menu-%e5%8f%8b%e6%83%85%e9%93%be%e6%8e%a5" class="menu">
-                                    
-                                    </li>
                                     <li id="menu-item-1" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-111">
                                         <a href="https://sometimesnaive.org/">南琴浪</a>
                                     </li>
@@ -399,6 +406,7 @@
                                     </li>
                                     <li id="menu-item-50" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-50">
                                         <a href="https://pt.whu.edu.cn/torrents.php/">武大-珞樱PT</a>
+                                    </li>
                                 </ul>
                             </div>
                         </div>
@@ -436,9 +444,16 @@
                         <div class="row">
                             <div class="col s12">
                                 <p>
-                                    <span class="copyright">Copyright © 2018 Kiri. Written with Django.</span>
+                                    <span class="copyright">Copyright © 2018 Kiri. </span>
                                     <span>Designed by
                                         <a href="http://mythem.es/" target="_blank" title="myThem.es" class="mythemes">myThem.es</a>.</span>
+                                </p>
+                                <p>
+                                    <span>Powered by 
+                                        <a href="https://www.djangoproject.com/" target="_blank" title="Django" class="mythemes">Django</a>,
+                                        <a href="https://www.cloudflare.com/"  target="_blank" title="Cloudflare" class="mythemes">Cloudflare</a>,
+                                        <a href="https://yusa.me/"  target="_blank" title="YuSA" class="mythemes">YuSA</a>
+                                    </span>
                                 </p>
                             </div>
                         </div>

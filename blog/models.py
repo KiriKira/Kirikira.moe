@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
+from django.core.exceptions import ObjectDoesNotExist
 
 
 class Category(models.Model):
@@ -42,9 +43,9 @@ class Post(models.Model):
     modified_time = models.DateTimeField()
 
     excerpt = models.CharField(max_length=200, blank=True)
+    tags = models.ManyToManyField(Tag, blank=True)
 
     category = models.ForeignKey(Category)
-    tags = models.ManyToManyField(Tag, blank=True)
 
     author = models.ForeignKey(User)
 
@@ -57,3 +58,11 @@ class Post(models.Model):
 
     def get_absolute_url(self):
         return reverse('blog:detail', kwargs={'pk': self.pk})
+
+    def get_music(self):
+        try:
+            music = self.player
+        except ObjectDoesNotExist:
+            music = None
+        return music
+
