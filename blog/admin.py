@@ -5,6 +5,10 @@ from comments.models import Comment
 from aplayer.models import Player
 
 
+class PlayerInline(admin.TabularInline):
+    model = Player
+
+
 class PostAdmin(admin.ModelAdmin):
     list_display = ['title', 'created_time', 'modified_time', 'category',
                     'author', 'status']
@@ -13,9 +17,8 @@ class PostAdmin(admin.ModelAdmin):
     search_fields = ('title', 'body')
     ordering = ['status', 'created_time']
 
-    fields = ('title', 'body', 'excerpt',
-              'category', 'author', 'status',
-              'player')
+    fields = ('title', 'body', 'excerpt', 'category', 'author', 'status')
+    inlines = (PlayerInline, )
 
 
 class CommentAdmin(admin.ModelAdmin):
