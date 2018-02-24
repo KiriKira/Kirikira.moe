@@ -13,7 +13,7 @@ def category(request, pk):
 def index(request, page=1):
 
     page = int(page)
-    final_page = int(Post.published.count() / 10) + 1
+    final_page = int((Post.published.count() - 1) / 10) + 1
     pages = range(1, final_page + 1)
     if page not in pages:
         return my_404_not_found(request)
