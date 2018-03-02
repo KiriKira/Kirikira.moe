@@ -32,7 +32,8 @@ def detail(request, pk):
     if post.status == 'draft':
         return my_404_not_found(request)
     post.body = markdown2.markdown(post.body,
-                                   extras=['fenced-code-blocks'])
+                                   extras=['fenced-code-blocks',
+                                           'cuddled-lists', 'markdown-in-html', 'pyshell'])
     form = CommentForm()
 
     music = post.get_music()
