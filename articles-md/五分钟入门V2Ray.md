@@ -105,17 +105,11 @@ $python
 >>> uuid.uuid1()
 ```
 
-上面是调用了python的命令行, 如果写成一句命令的话就是:
-
-```bash
-$python -c "print(__import__('uuid').uuid1())"
-```
-
 编辑完config.json以后，使用`systemctl restart v2ray`来重启V2Ray，再用`systemctl status v2ray`来看看V2Ray启动成功了没有。如果启动失败的话，大概率是你的json格式不对，请检查一下 __逗号__ 的大小写、有没有忘记加 __引号__ 之类的细节。这样，V2Ray服务端就配置完了。
 
 ### 4.2 WS+TLS+Web
 
-当我们已有网站部署并且准备将 V2Ray 隐藏在网站后面时，就可以让 Web Server，例如 Nginx/Caddy 来把流量分流给V2Ray。重申一遍我的立场，如果没有真网站就不要放个假网站上去再用WSS，因为WS往往会比纯TCP-VMESS要慢(小薇姐姐的解释: 理论上不会比TCP更快, 但是实际体验如果有明显差距就是配置不当的原因)，即使要放也请放个Aria2面板之类的有点用处的东西上去而不是放个毫无意义的静态网页。
+当我们已有网站部署并且准备将 V2Ray 隐藏在网站后面时，就可以让 Web Server，例如 Nginx/Caddy 来把流量分流给V2Ray。重申一遍我的立场，如果没有真网站就不要放个假网站上去再用WSS，__因为WS往往会比纯TCP-VMESS要慢__，即使要放也请放个Aria2面板之类的有点用处的东西上去而不是放个毫无意义的静态网页。
 
 我们采用根据path分流的方法，例如通过设置设置Nginx/Caddy，将所有对https://sub.example.com/test/ 的流量传给后端的V2Ray, 而所有不是/test/ 的请求则正常应答，这样在外部看来就是完全正常的一个网站流量了。
 

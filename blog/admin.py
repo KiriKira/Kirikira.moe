@@ -17,7 +17,7 @@ class PostAdmin(admin.ModelAdmin):
     search_fields = ('title', 'body')
     ordering = ['status', 'created_time']
 
-    fields = ('title', 'body', 'excerpt', 'category', 'author', 'created_time', 'modified_time', 'status')
+    fields = ('title', 'body', 'excerpt', 'category', 'author', 'status')
     inlines = (PlayerInline, )
 
 
