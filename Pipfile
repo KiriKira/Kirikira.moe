@@ -10,8 +10,13 @@ verify_ssl = true
 django = "==1.8.18"
 ipython = "==6.2.1"
 pytz = "*"
-"markdown2" = "*"
 uwsgi = "*"
+python-memcached = "*"
+markdown = "*"
+pymdown-extensions = "*"
+markdown-newtab = "*"
+django-redis = "==4.8.0"
+markdown-downheader = "*"
 
 
 [dev-packages]
