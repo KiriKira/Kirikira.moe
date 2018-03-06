@@ -7,7 +7,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="profile" href="https://gmpg.org/xfn/11">
+    <!---<link rel="profile" href="https://gmpg.org/xfn/11">---->
     <title>It's me, Kiri!</title>
     <!----
     <link rel="stylesheet" id="materialize-google-font-1-css" href="{% static 'css/css' %}" type="text/css" media="all">
@@ -18,9 +18,10 @@
     <link rel="stylesheet" id="mythemes-comments-css" href="{% static 'css/comments.css' %}" type="text/css" media="all">
     <link rel="stylesheet" id="mythemes-comments-typography-css" href="{% static 'css/comments-typography.css' %}" type="text/css"
         media="all">
+    ---->
     <link rel="stylesheet" id="mythemes-pretty-photo-css" href="{% static 'css/prettyPhoto.css' %}" type="text/css" media="all">
     <link rel="stylesheet" id="mythemes-plugins-css" href="{% static 'css/plugins.css' %}" type="text/css" media="all">
-    ---->
+    
     <link rel="stylesheet" id="mythemes-icons-css" href="{% static 'css/mythemes-icons.css' %}" type="text/css" media="all">
     <link rel="stylesheet" id="mythemes-effects-css" href="{% static 'css/effects.css' %}" type="text/css" media="all">
     <link rel="stylesheet" id="mythemes-header-css" href="{% static 'css/header.css' %}" type="text/css" media="all">
@@ -33,8 +34,8 @@
     <link rel="stylesheet" id="mythemes-footer-css" href="{% static 'css/footer.css' %}" type="text/css" media="all">
     <link rel="stylesheet" id="mythemes-style-css" href="{% static 'css/style.css' %}" type="text/css" media="all">
     <link rel="stylesheet" type="text/css" href="{% static 'css/csshake.css' %}">
-    <link rel="stylesheet" id="jquery-lazyloadxt-spinner-css-css" href="{% static 'css/jquery.lazyloadxt.spinner.css' %}" type="text/css"
-        media="all">
+    <!---<link rel="stylesheet" id="jquery-lazyloadxt-spinner-css-css" href="{% static 'css/jquery.lazyloadxt.spinner.css' %}" type="text/css"
+        media="all">---->
     {% block css %}
     {% endblock css %}
     {% block js %}
@@ -353,7 +354,8 @@
                     <aside class="col s12 m12 l3 mythemes-sidebar sidebar-to-right">
                         <a href="{% url 'blog:detail' 1 %}">
                             <div id="categories-1" class="widget widget_categories shake-hard" >
-                            <video src="{%static 'img/kiri.mp4'%}" width="100%" height="100%" autoplay loop > </video>
+                            <video type="video/mp4" src="{%static 'img/kiri.mp4'%}" width="100%" height="100%" autoplay muted  loop > 
+                            </video>
                             <ul><li class="cat-item cat-item-1"><a style="font-weight: bold" href="{% url 'blog:detail' 1 %}">Love Kiri!</a></li></ul>
                             </div>
                         </a>
@@ -456,9 +458,6 @@
                     </div>
                 </div>
             </div>
-            <script>
-
-            </script>
         </footer>
         <script type="text/javascript" src="{% static 'js/imagesloaded.min.js' %}"></script>
         <script type="text/javascript" src="{% static 'js/masonry.min.js' %}"></script>
@@ -467,14 +466,13 @@
         <!---
         <script type="text/javascript" src="{% static 'js/jquery.prettyPhoto.js' %}"></script>
         <script type="text/javascript" src="{% static 'js/jquery.prettyPhoto.settings.js' %}"></script>
-        ---->
         <script type="text/javascript">
             /* <![CDATA[ */
             var a3_lazyload_params = { "apply_images": "1", "apply_videos": "1" };
             var a3_lazyload_params = { "apply_images": "1", "apply_videos": "1" };
 /* ]]> */
         </script>
-
+        
         <script type="text/javascript" src="{% static 'js/jquery.lazyloadxt.min.js' %}"></script>
         <script type="text/javascript" src="{% static 'js/jquery.lazyloadxt.srcset.min.js' %}"></script>
 
@@ -484,8 +482,11 @@
             var a3_lazyload_extend_params = { "edgeY": "0" };
 /* ]]> */
         </script>
+        ---->
 
-
+        <script type="text/javascript">
+            document.querySelectorAll('video').forEach(p => p.play())
+        </script>
 
         <div class="drag-target" style="left: 0px; touch-action: pan-y; -webkit-user-drag: none; -webkit-tap-highlight-color: rgba(0, 0, 0, 0);"></div>
         <div class="hiddendiv common"></div>
