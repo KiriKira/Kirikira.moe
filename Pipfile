@@ -17,6 +17,7 @@ pymdown-extensions = "*"
 markdown-newtab = "*"
 django-redis = "==4.8.0"
 markdown-downheader = "*"
+"autopep8" = "*"
 
 
 [dev-packages]

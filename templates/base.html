@@ -18,12 +18,12 @@
     <link rel="stylesheet" id="mythemes-comments-css" href="{% static 'css/comments.css' %}" type="text/css" media="all">
     <link rel="stylesheet" id="mythemes-comments-typography-css" href="{% static 'css/comments-typography.css' %}" type="text/css"
         media="all">
-    ---->
     <link rel="stylesheet" id="mythemes-pretty-photo-css" href="{% static 'css/prettyPhoto.css' %}" type="text/css" media="all">
     <link rel="stylesheet" id="mythemes-plugins-css" href="{% static 'css/plugins.css' %}" type="text/css" media="all">
-    
-    <link rel="stylesheet" id="mythemes-icons-css" href="{% static 'css/mythemes-icons.css' %}" type="text/css" media="all">
     <link rel="stylesheet" id="mythemes-effects-css" href="{% static 'css/effects.css' %}" type="text/css" media="all">
+    ---->
+    <link rel="stylesheet" id="mythemes-icons-css" href="{% static 'css/mythemes-icons.css' %}" type="text/css" media="all">
+
     <link rel="stylesheet" id="mythemes-header-css" href="{% static 'css/header.css' %}" type="text/css" media="all">
     <link rel="stylesheet" id="mythemes-materialize-css" href="{% static 'css/materialize.min.css' %}" type="text/css" media="all">
     <link rel="stylesheet" id="mythemes-typography-css" href="{% static 'css/typography.css' %}" type="text/css" media="all">
@@ -325,6 +325,7 @@
 </head>
 
 <body class="home blog logged-in custom-background wp-custom-logo">
+   <!---- <script type="text/javascript" src="{% static 'js/sw-registration.js' %}"></script> ---->
     <header class="mythemes-miss-header-image">
 
         <nav class="white mythemes-topper" role="navigation">
@@ -354,7 +355,7 @@
                     <aside class="col s12 m12 l3 mythemes-sidebar sidebar-to-right">
                         <a href="{% url 'blog:detail' 1 %}">
                             <div id="categories-1" class="widget widget_categories shake-hard" >
-                            <video type="video/mp4" src="{%static 'img/kiri.mp4'%}" width="100%" height="100%" autoplay muted  loop > 
+                            <video type="video/mp4" src="{%static 'img/kiri.mp4'%}" width="100%" height="100%" preload="auto" muted  loop > 
                             </video>
                             <ul><li class="cat-item cat-item-1"><a style="font-weight: bold" href="{% url 'blog:detail' 1 %}">Love Kiri!</a></li></ul>
                             </div>

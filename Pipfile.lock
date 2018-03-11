@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "99cd6f8c7600fb0b19ee2fed9028d23c7d745d3170ee7f1d8afeccd8f71a31b8"
+            "sha256": "b2de2cc377bbe1fe7695fecc96885bac22e9754558b5d1ce8bc48049fca3f504"
         },
         "host-environment-markers": {
             "implementation_name": "cpython",
@@ -9,9 +9,9 @@
             "os_name": "posix",
             "platform_machine": "x86_64",
             "platform_python_implementation": "CPython",
-            "platform_release": "4.13.0-32-generic",
+            "platform_release": "4.13.0-36-generic",
             "platform_system": "Linux",
-            "platform_version": "#35~16.04.1-Ubuntu SMP Thu Jan 25 10:13:43 UTC 2018",
+            "platform_version": "#40~16.04.1-Ubuntu SMP Fri Feb 16 23:25:58 UTC 2018",
             "python_full_version": "3.5.2",
             "python_version": "3.5",
             "sys_platform": "linux"
@@ -29,6 +29,12 @@
         ]
     },
     "default": {
+        "autopep8": {
+            "hashes": [
+                "sha256:c7be71ab0cb2f50c9c22c82f0c9acaafc6f57492c3fbfee9790c415005c2b9a5"
+            ],
+            "version": "==1.3.4"
+        },
         "decorator": {
             "hashes": [
                 "sha256:94d1d8905f5010d74bbbd86c30471255661a14187c45f8d7f3e5aa8540fdb2e5",
@@ -127,6 +133,13 @@
                 "sha256:e64193f0047ad603b71f202332ab5527c5e52aa7c8b609704fc28c0dc20c4365"
             ],
             "version": "==0.5.2"
+        },
+        "pycodestyle": {
+            "hashes": [
+                "sha256:6c4245ade1edfad79c3446fadfc96b0de2759662dc29d07d80a6f27ad1ca6ba9",
+                "sha256:682256a5b318149ca0d2a9185d365d8864a768a28db66a84a2ea946bcc426766"
+            ],
+            "version": "==2.3.1"
         },
         "pygments": {
             "hashes": [

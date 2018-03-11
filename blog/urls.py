@@ -1,8 +1,11 @@
 from django.conf.urls import url
+from django.views.generic import TemplateView
+from django.contrib.sitemaps.views import sitemap
 from . import views
 from .rss import AllPostsRssFeed
-from django.contrib.sitemaps.views import sitemap
 from blog.sitemaps import PostSitemap
+from django.views.decorators.cache import cache_control
+
 
 sitemaps = {
     'posts': PostSitemap,
@@ -16,4 +19,8 @@ urlpatterns = [
     url(r'^rss/$', AllPostsRssFeed(), name='rss'),
     url(r'^sitemap\.xml$', sitemap, {'sitemaps': sitemaps},
         name='django.contrib.sitemaps.views.sitemap'),
+    url(r'^sw.js', cache_control(max_age=2592000)(TemplateView.as_view(
+        template_name="sw/sw.js",
+        content_type='application/javascript',
+    )), name='service-worker.js'),
 ]
