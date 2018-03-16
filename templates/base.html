@@ -1,4 +1,5 @@
-{% load staticfiles %} {% load blog_tags %}
+{% load staticfiles %}
+ {% load blog_tags %}
 
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -9,6 +10,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!---<link rel="profile" href="https://gmpg.org/xfn/11">---->
     <title>It's me, Kiri!</title>
+    {% block preview %}
+    {% endblock preview %}
     <!----
     <link rel="stylesheet" id="materialize-google-font-1-css" href="{% static 'css/css' %}" type="text/css" media="all">
     <link rel="stylesheet" id="materialize-google-font-2-css" href="{% static 'css/css(1)' %}" type="text/css" media="all">
@@ -22,6 +25,8 @@
     <link rel="stylesheet" id="mythemes-plugins-css" href="{% static 'css/plugins.css' %}" type="text/css" media="all">
     <link rel="stylesheet" id="mythemes-effects-css" href="{% static 'css/effects.css' %}" type="text/css" media="all">
     ---->
+    <link rel="stylesheet" id="materialize-google-font-1-css" href="//fonts.loli.net/css?family=Poiret+One&amp;ver=0.0.16" type="text/css" media="all">
+    <link rel="stylesheet" id="materialize-google-font-2-css" href="//fonts.loli.net/css?family=Raleway%3A400%2C100%2C200%2C300%2C500%2C600%2C700%2C800%2C900&amp;ver=0.0.16" type="text/css" media="all">
     <link rel="stylesheet" id="mythemes-icons-css" href="{% static 'css/mythemes-icons.css' %}" type="text/css" media="all">
 
     <link rel="stylesheet" id="mythemes-header-css" href="{% static 'css/header.css' %}" type="text/css" media="all">
@@ -49,6 +54,10 @@
 
         body {
             background-color: #ffffff;
+        }
+        
+        span.red {
+            color: #d14
         }
 
         /* background image */
@@ -334,7 +343,7 @@
                 <div class="mythemes-blog-identity">
                     <div class="mythemes-blog-logo" style="margin-top: 0px; margin-bottom: 0px;">
                         <a href="{% url 'blog:index' %}" class="custom-logo-link" rel="home" itemprop="url">
-                            <img src="{% static 'img/banner.jpg' %}" class="custom-logo shake-slow" alt="Kirikira.moe" itemprop="logo">
+                            <img src="{% static 'img/banner-min.jpg' %}" class="custom-logo shake-slow" alt="Kirikira.moe" itemprop="logo">
                         </a>
                     </div>
                     <a class="mythemes-blog-title shake" href="{% url 'blog:index' %}" title="Kirikira.moe - 合缘奇缘，一期一会">Kirikira.moe</a>

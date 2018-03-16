@@ -1,4 +1,12 @@
-{% extends 'base.html' %} {% block main %}
+{% extends 'base.html' %} 
+{% load staticfiles %}
+{% block preview %}
+<meta name="description" content="Python lover & Free Software believer. Not yet a developer." />
+<meta property="og:title" content="好耶, 是 Kiri" />
+<meta property="og:description" content="Python lover & Free Software believer. Not yet a developer." />
+<meta property="og:image" content="{% static 'img/kiri.jpg' %}" />
+{% endblock preview %}
+{% block main %}
 <section class="col s12 m12 l9 mythemes-classic mythemes-classic">
     {% for post in post_list %}
     <article class="post-125 post type-post status-publish format-standard hentry category-uncategorized">
@@ -14,11 +22,11 @@
 
             <ul class="post-categories">
                 <li>
-                    <a href="{% url 'blog:index' %}" rel="category tag" class="waves-effect waves-light">{{ post.category.name }}</a>
+                    <a href="{% url 'blog:category' post.category.pk %}" rel="category tag" class="waves-effect waves-light">{{ post.category.name }}</a>
                 </li>
             </ul>
 
-            <a class="author waves-effect waves-dark grey lighten-4" href="{% url 'blog:index' %}" title="written by Kiri">
+            <a class="author waves-effect waves-dark grey lighten-4" href="{% url 'blog:index' %}" title="written by {{ post.author }}">
                 <i class="mythemes-icon-user-1"></i>{{ post.author }} </a>
 
         </div>
