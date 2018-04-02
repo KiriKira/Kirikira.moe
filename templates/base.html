@@ -27,15 +27,15 @@
     ---->
     <link rel="stylesheet" id="materialize-google-font-1-css" href="//fonts.loli.net/css?family=Poiret+One&amp;ver=0.0.16" type="text/css" media="all">
     <link rel="stylesheet" id="materialize-google-font-2-css" href="//fonts.loli.net/css?family=Raleway%3A400%2C100%2C200%2C300%2C500%2C600%2C700%2C800%2C900&amp;ver=0.0.16" type="text/css" media="all">
-    <link rel="stylesheet" id="mythemes-icons-css" href="{% static 'css/mythemes-icons.css' %}" type="text/css" media="all">
+    <!----<link rel="stylesheet" id="mythemes-icons-css" href="{% static 'css/mythemes-icons.css' %}" type="text/css" media="all">---->
 
     <link rel="stylesheet" id="mythemes-header-css" href="{% static 'css/header.css' %}" type="text/css" media="all">
     <link rel="stylesheet" id="mythemes-materialize-css" href="{% static 'css/materialize.min.css' %}" type="text/css" media="all">
-    <link rel="stylesheet" id="mythemes-typography-css" href="{% static 'css/typography.css' %}" type="text/css" media="all">
+    <link rel="stylesheet" id="mythemes-typography-css" href="{% static 'css/typography-mod.css' %}" type="text/css" media="all">
     <link rel="stylesheet" id="mythemes-nav-css" href="{% static 'css/nav.css' %}" type="text/css" media="all">
-    <link rel="stylesheet" id="mythemes-blog-css" href="{% static 'css/blog.css' %}" type="text/css" media="all">
+    <link rel="stylesheet" id="mythemes-blog-css" href="{% static 'css/blog-mod.css' %}" type="text/css" media="all">
     <link rel="stylesheet" id="mythemes-elements-css" href="{% static 'css/elements.css' %}" type="text/css" media="all">
-    <link rel="stylesheet" id="mythemes-widgets-css" href="{% static 'css/widgets.css' %}" type="text/css" media="all">
+    <link rel="stylesheet" id="mythemes-widgets-css" href="{% static 'css/widgets-mod.css' %}" type="text/css" media="all">
     <link rel="stylesheet" id="mythemes-footer-css" href="{% static 'css/footer.css' %}" type="text/css" media="all">
     <link rel="stylesheet" id="mythemes-style-css" href="{% static 'css/style.css' %}" type="text/css" media="all">
     <link rel="stylesheet" type="text/css" href="{% static 'css/csshake.css' %}">
@@ -57,7 +57,8 @@
         }
         
         span.red {
-            color: #d14
+            color: #d14 ;
+            background-color : #ffffff !important;
         }
 
         /* background image */
@@ -387,6 +388,7 @@
                             <h4 class="widget-title">功能</h4>
                             <ul>
                                 <li><a href="{% url 'blog:rss' %}">RSS</a></li>
+                                <li><a href="https://sometimesoffline.online/"><del>瑟琴</del>导航</a></li>
                             </ul>
 
                         </div>
@@ -400,19 +402,22 @@
                                     <li id="menu-item-2" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-113">
                                         <a href="https://blog.yangmame.top/">YangMame</a>
                                     </li>
-                                    <li id="menu-item-126" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-126">
+                                    <li id="menu-item-3" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-126">
                                         <a href="https://linkthis.ml/">link</a>
                                     </li>
-                                    <li id="menu-item-126" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-126">
+                                    <li id="menu-item-4" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-126">
                                         <a href="https://wwyqianqian.github.io/">千千</a>
                                     </li>
-                                    <li id="menu-item-126" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-126">
+                                    <li id="menu-item-5" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-126">
                                         <a href="https://ekyu.moe/">Equim</a>
                                     </li>
-                                    <li id="menu-item-49" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-49">
+                                    <li id="menu-item-6" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-126">
+                                        <a href="https://void-shana.moe/">夏娜娜</a>
+                                    </li>
+                                    <li id="menu-item-7" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-49">
                                         <a href="https://hudbt.hust.edu.cn/torrents.php?page=3/">华科-蝴蝶PT</a>
                                     </li>
-                                    <li id="menu-item-50" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-50">
+                                    <li id="menu-item-8" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-50">
                                         <a href="https://pt.whu.edu.cn/torrents.php/">武大-珞樱PT</a>
                                     </li>
                                 </ul>
