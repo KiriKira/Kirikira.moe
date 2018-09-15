@@ -78,7 +78,7 @@
                             </span>
 
                             <cite>
-                                <a href="{{ comment.url }}" rel="external nofollow" class="url">{{comment.name}}</a>
+                                <a rel="external nofollow" class="url">{{comment.name}}</a>
                             </cite>
                             <div class="clear"></div>
                         </header>
@@ -118,7 +118,7 @@
                                 {{ form.email.errors }}
                         </p>
                         <p class="comment-form-url input">
-                                <label for="{{ form.url.id_for_label }}">URL or GITHUB (no necessity)：</label>
+                                <label for="{{ form.url.id_for_label }}">URL or GITHUB (no necessity and won't be displayed)：</label>
                                 {{ form.url }}
                                 {{ form.email.errors }}
                         </p>

@@ -41,7 +41,7 @@ def detail(request, pk):
     post.body = markdown(post.body, ['pymdownx.superfences', 'pymdownx.betterem',
                                      NewTabExtension(), 'downheader(levels=2)',
                                      'pymdownx.tilde', 'pymdownx.inlinehilite',
-                                     'pymdownx.details'])
+                                     'pymdownx.details', "markdown.extensions.footnotes"])
     form = CommentForm()
 
     music = post.get_music()

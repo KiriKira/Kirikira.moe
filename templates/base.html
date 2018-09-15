@@ -1,5 +1,5 @@
 {% load staticfiles %}
- {% load blog_tags %}
+{% load blog_tags %}
 
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -25,13 +25,17 @@
     <link rel="stylesheet" id="mythemes-plugins-css" href="{% static 'css/plugins.css' %}" type="text/css" media="all">
     <link rel="stylesheet" id="mythemes-effects-css" href="{% static 'css/effects.css' %}" type="text/css" media="all">
     ---->
-    <link rel="stylesheet" id="materialize-google-font-1-css" href="//fonts.loli.net/css?family=Poiret+One&amp;ver=0.0.16" type="text/css" media="all">
-    <link rel="stylesheet" id="materialize-google-font-2-css" href="//fonts.loli.net/css?family=Raleway%3A400%2C100%2C200%2C300%2C500%2C600%2C700%2C800%2C900&amp;ver=0.0.16" type="text/css" media="all">
+    <link rel="stylesheet" id="materialize-google-font-1-css" href="//fonts.loli.net/css?family=Poiret+One&amp;ver=0.0.16"
+        type="text/css" media="all">
+    <link rel="stylesheet" id="materialize-google-font-2-css" href="//fonts.loli.net/css?family=Raleway%3A400%2C100%2C200%2C300%2C500%2C600%2C700%2C800%2C900&amp;ver=0.0.16"
+        type="text/css" media="all">
     <!----<link rel="stylesheet" id="mythemes-icons-css" href="{% static 'css/mythemes-icons.css' %}" type="text/css" media="all">---->
 
     <link rel="stylesheet" id="mythemes-header-css" href="{% static 'css/header.css' %}" type="text/css" media="all">
-    <link rel="stylesheet" id="mythemes-materialize-css" href="{% static 'css/materialize.min.css' %}" type="text/css" media="all">
-    <link rel="stylesheet" id="mythemes-typography-css" href="{% static 'css/typography-mod.css' %}" type="text/css" media="all">
+    <link rel="stylesheet" id="mythemes-materialize-css" href="{% static 'css/materialize.min.css' %}" type="text/css"
+        media="all">
+    <link rel="stylesheet" id="mythemes-typography-css" href="{% static 'css/typography-mod.css' %}" type="text/css"
+        media="all">
     <link rel="stylesheet" id="mythemes-nav-css" href="{% static 'css/nav.css' %}" type="text/css" media="all">
     <link rel="stylesheet" id="mythemes-blog-css" href="{% static 'css/blog-mod.css' %}" type="text/css" media="all">
     <link rel="stylesheet" id="mythemes-elements-css" href="{% static 'css/elements.css' %}" type="text/css" media="all">
@@ -46,19 +50,28 @@
     {% block js %}
     {% endblock js %}
     <link rel="shortcut icon" type='image/x-icon' href="{% static 'img/favicon.ico' %}">
-    
-    <script type="text/javascript" src="{% static 'js/jquery.js' %}"></script>
+
+    <script type="text/javascript" src="{% static 'js/jquery.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'js/jquery-migrate.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'js/jquery.stellar.min.js' %}"></script>
+    <script>
+        $(function () {
+            $.stellar({
+                horizontalScrolling: false,
+                verticalOffset: 40
+            });
+        });
+    </script>
     <style type="text/css">
         /* header color */
 
         body {
             background-color: #ffffff;
         }
-        
+
         span.red {
-            color: #d14 ;
-            background-color : #ffffff !important;
+            color: #d14;
+            background-color: #ffffff !important;
         }
 
         /* background image */
@@ -89,11 +102,11 @@
 
     <style type="text/css" id="mythemes-header-description-color" media="all">
         div.mythemes-header a.header-description {
-            color: rgba( 0, 0, 0, 0.55);
+            color: rgba(0, 0, 0, 0.55);
         }
 
         div.mythemes-header a.header-description:hover {
-            color: rgba( 0, 0, 0, 1.0);
+            color: rgba(0, 0, 0, 1.0);
         }
     </style>
 
@@ -145,85 +158,102 @@
         }
     </style>
     <style type="text/css" style="display: none !important;">
+        .banner {
+            position: relative;
+            height: 150px;
+            margin-top: 46px;
+            overflow: hidden;
+            background: #ffffff;
+        }
+
+        .banner img {
+            position: absolute;
+            left: 0%;
+            top: 0px;
+            margin-left: 0px;
+            width: 2000px;
+            transform: translate3d(0, 0, 0);
+        }
+
         #sp-fw-container {
-            z-index: 999999!important;
-            text-align: left!important;
+            z-index: 999999 !important;
+            text-align: left !important;
         }
 
         #sp-fw-container * {
-            font-size: 13px!important;
-            color: black!important;
-            float: none!important;
+            font-size: 13px !important;
+            color: black !important;
+            float: none !important;
         }
 
         #sp-fw-main-head {
-            position: relative!important;
-            top: 0!important;
-            left: 0!important;
+            position: relative !important;
+            top: 0 !important;
+            left: 0 !important;
         }
 
         #sp-fw-span-info {
-            position: absolute!important;
-            right: 1px!important;
-            top: 0!important;
-            font-size: 10px!important;
-            line-height: 10px!important;
-            background: none!important;
-            font-style: italic!important;
-            color: #5a5a5a!important;
-            text-shadow: white 0px 1px 1px!important;
+            position: absolute !important;
+            right: 1px !important;
+            top: 0 !important;
+            font-size: 10px !important;
+            line-height: 10px !important;
+            background: none !important;
+            font-style: italic !important;
+            color: #5a5a5a !important;
+            text-shadow: white 0px 1px 1px !important;
         }
 
         #sp-fw-container input {
-            vertical-align: middle!important;
-            display: inline-block!important;
-            outline: none!important;
+            vertical-align: middle !important;
+            display: inline-block !important;
+            outline: none !important;
             height: auto !important;
             padding: 0px !important;
             margin-bottom: 0px !important;
         }
 
         #sp-fw-container input[type="number"] {
-            width: 50px!important;
-            text-align: left!important;
+            width: 50px !important;
+            text-align: left !important;
         }
 
         #sp-fw-container input[type="checkbox"] {
-            border: 1px solid #B4B4B4!important;
-            padding: 1px!important;
-            margin: 3px!important;
-            width: 13px!important;
-            height: 13px!important;
-            background: none!important;
-            cursor: pointer!important;
+            border: 1px solid #B4B4B4 !important;
+            padding: 1px !important;
+            margin: 3px !important;
+            width: 13px !important;
+            height: 13px !important;
+            background: none !important;
+            cursor: pointer !important;
             visibility: visible !important;
             position: static !important;
         }
 
         #sp-fw-container input[type="button"] {
-            border: 1px solid #ccc!important;
-            cursor: pointer!important;
-            background: none!important;
-            width: auto!important;
-            height: auto!important;
+            border: 1px solid #ccc !important;
+            cursor: pointer !important;
+            background: none !important;
+            width: auto !important;
+            height: auto !important;
         }
 
         #sp-fw-container li {
-            list-style: none!important;
-            margin: 3px 0!important;
-            border: none!important;
-            float: none!important;
+            list-style: none !important;
+            margin: 3px 0 !important;
+            border: none !important;
+            float: none !important;
         }
 
         #sp-fw-container fieldset {
-            border: 2px groove #ccc!important;
-            -moz-border-radius: 3px!important;
-            border-radius: 3px!important;
-            padding: 4px 9px 6px 9px!important;
-            margin: 2px!important;
-            display: block!important;
-            width: auto!important;
-            height: auto!important;
+            border: 2px groove #ccc !important;
+            -moz-border-radius: 3px !important;
+            border-radius: 3px !important;
+            padding: 4px 9px 6px 9px !important;
+            margin: 2px !important;
+            display: block !important;
+            width: auto !important;
+            height: auto !important;
         }
 
         #sp-fw-container legend {
@@ -232,119 +262,120 @@
         }
 
         #sp-fw-container fieldset>ul {
-            padding: 0!important;
-            margin: 0!important;
+            padding: 0 !important;
+            margin: 0 !important;
         }
 
         #sp-fw-container ul#sp-fw-a_useiframe-extend {
-            padding-left: 40px!important;
+            padding-left: 40px !important;
         }
 
         #sp-fw-rect {
-            position: relative!important;
-            top: 0!important;
-            left: 0!important;
-            float: right!important;
-            height: 10px!important;
-            width: 10px!important;
-            padding: 0!important;
-            margin: 0!important;
-            -moz-border-radius: 3px!important;
-            border-radius: 3px!important;
-            border: 1px solid white!important;
-            -webkit-box-shadow: inset 0 5px 0 rgba(255, 255, 255, 0.3), 0 0 3px rgba(0, 0, 0, 0.8)!important;
-            -moz-box-shadow: inset 0 5px 0 rgba(255, 255, 255, 0.3), 0 0 3px rgba(0, 0, 0, 0.8)!important;
-            box-shadow: inset 0 5px 0 rgba(255, 255, 255, 0.3), 0 0 3px rgba(0, 0, 0, 0.8)!important;
-            opacity: 0.8!important;
+            position: relative !important;
+            top: 0 !important;
+            left: 0 !important;
+            float: right !important;
+            height: 10px !important;
+            width: 10px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            -moz-border-radius: 3px !important;
+            border-radius: 3px !important;
+            border: 1px solid white !important;
+            -webkit-box-shadow: inset 0 5px 0 rgba(255, 255, 255, 0.3), 0 0 3px rgba(0, 0, 0, 0.8) !important;
+            -moz-box-shadow: inset 0 5px 0 rgba(255, 255, 255, 0.3), 0 0 3px rgba(0, 0, 0, 0.8) !important;
+            box-shadow: inset 0 5px 0 rgba(255, 255, 255, 0.3), 0 0 3px rgba(0, 0, 0, 0.8) !important;
+            opacity: 0.8 !important;
         }
 
         #sp-fw-dot,
         #sp-fw-cur-mode {
-            position: absolute!important;
-            z-index: 9999!important;
-            width: 5px!important;
-            height: 5px!important;
-            padding: 0!important;
-            -moz-border-radius: 3px!important;
-            border-radius: 3px!important;
-            border: 1px solid white!important;
-            opacity: 1!important;
-            -webkit-box-shadow: inset 0 -2px 1px rgba(0, 0, 0, 0.3), inset 0 2px 1px rgba(255, 255, 255, 0.3), 0px 1px 2px rgba(0, 0, 0, 0.9)!important;
-            -moz-box-shadow: inset 0 -2px 1px rgba(0, 0, 0, 0.3), inset 0 2px 1px rgba(255, 255, 255, 0.3), 0px 1px 2px rgba(0, 0, 0, 0.9)!important;
-            box-shadow: inset 0 -2px 1px rgba(0, 0, 0, 0.3), inset 0 2px 1px rgba(255, 255, 255, 0.3), 0px 1px 2px rgba(0, 0, 0, 0.9)!important;
+            position: absolute !important;
+            z-index: 9999 !important;
+            width: 5px !important;
+            height: 5px !important;
+            padding: 0 !important;
+            -moz-border-radius: 3px !important;
+            border-radius: 3px !important;
+            border: 1px solid white !important;
+            opacity: 1 !important;
+            -webkit-box-shadow: inset 0 -2px 1px rgba(0, 0, 0, 0.3), inset 0 2px 1px rgba(255, 255, 255, 0.3), 0px 1px 2px rgba(0, 0, 0, 0.9) !important;
+            -moz-box-shadow: inset 0 -2px 1px rgba(0, 0, 0, 0.3), inset 0 2px 1px rgba(255, 255, 255, 0.3), 0px 1px 2px rgba(0, 0, 0, 0.9) !important;
+            box-shadow: inset 0 -2px 1px rgba(0, 0, 0, 0.3), inset 0 2px 1px rgba(255, 255, 255, 0.3), 0px 1px 2px rgba(0, 0, 0, 0.9) !important;
         }
 
         #sp-fw-dot {
-            right: -3px!important;
-            top: -3px!important;
+            right: -3px !important;
+            top: -3px !important;
         }
 
         #sp-fw-cur-mode {
-            left: -3px!important;
-            top: -3px!important;
-            width: 6px!important;
-            height: 6px!important;
+            left: -3px !important;
+            top: -3px !important;
+            width: 6px !important;
+            height: 6px !important;
         }
 
         #sp-fw-content {
-            padding: 0!important;
-            margin: 5px 5px 0 0!important;
-            -moz-border-radius: 3px!important;
-            border-radius: 3px!important;
-            border: 1px solid #A0A0A0!important;
-            -webkit-box-shadow: -2px 2px 5px rgba(0, 0, 0, 0.3)!important;
-            -moz-box-shadow: -2px 2px 5px rgba(0, 0, 0, 0.3)!important;
-            box-shadow: -2px 2px 5px rgba(0, 0, 0, 0.3)!important;
+            padding: 0 !important;
+            margin: 5px 5px 0 0 !important;
+            -moz-border-radius: 3px !important;
+            border-radius: 3px !important;
+            border: 1px solid #A0A0A0 !important;
+            -webkit-box-shadow: -2px 2px 5px rgba(0, 0, 0, 0.3) !important;
+            -moz-box-shadow: -2px 2px 5px rgba(0, 0, 0, 0.3) !important;
+            box-shadow: -2px 2px 5px rgba(0, 0, 0, 0.3) !important;
         }
 
         #sp-fw-main {
-            padding: 5px!important;
-            border: 1px solid white!important;
-            -moz-border-radius: 3px!important;
-            border-radius: 3px!important;
-            background-color: #F2F2F7!important;
-            background: -moz-linear-gradient(top, #FCFCFC, #F2F2F7 100%)!important;
-            background: -webkit-gradient(linear, 0 0, 0 100%, from(#FCFCFC), to(#F2F2F7))!important;
+            padding: 5px !important;
+            border: 1px solid white !important;
+            -moz-border-radius: 3px !important;
+            border-radius: 3px !important;
+            background-color: #F2F2F7 !important;
+            background: -moz-linear-gradient(top, #FCFCFC, #F2F2F7 100%) !important;
+            background: -webkit-gradient(linear, 0 0, 0 100%, from(#FCFCFC), to(#F2F2F7)) !important;
         }
 
         #sp-fw-foot {
-            position: relative!important;
-            left: 0!important;
-            right: 0!important;
-            min-height: 20px!important;
+            position: relative !important;
+            left: 0 !important;
+            right: 0 !important;
+            min-height: 20px !important;
         }
 
         #sp-fw-savebutton {
-            position: absolute!important;
-            top: 0!important;
-            right: 2px!important;
+            position: absolute !important;
+            top: 0 !important;
+            right: 2px !important;
         }
 
         #sp-fw-container .sp-fw-spanbutton {
-            border: 1px solid #ccc!important;
-            -moz-border-radius: 3px!important;
-            border-radius: 3px!important;
-            padding: 2px 3px!important;
-            cursor: pointer!important;
-            background-color: #F9F9F9!important;
-            -webkit-box-shadow: inset 0 10px 5px white!important;
-            -moz-box-shadow: inset 0 10px 5px white!important;
-            box-shadow: inset 0 10px 5px white!important;
+            border: 1px solid #ccc !important;
+            -moz-border-radius: 3px !important;
+            border-radius: 3px !important;
+            padding: 2px 3px !important;
+            cursor: pointer !important;
+            background-color: #F9F9F9 !important;
+            -webkit-box-shadow: inset 0 10px 5px white !important;
+            -moz-box-shadow: inset 0 10px 5px white !important;
+            box-shadow: inset 0 10px 5px white !important;
         }
     </style>
 </head>
 
 <body class="home blog logged-in custom-background wp-custom-logo">
-   <!---- <script type="text/javascript" src="{% static 'js/sw-registration.js' %}"></script> ---->
+    <!---- <script type="text/javascript" src="{% static 'js/sw-registration.js' %}"></script> ---->
     <header class="mythemes-miss-header-image">
 
         <nav class="white mythemes-topper" role="navigation">
             <div class="nav-wrapper container">
 
                 <div class="mythemes-blog-identity">
-                    <div class="mythemes-blog-logo" style="margin-top: 0px; margin-bottom: 0px;">
-                        <a href="{% url 'blog:index' %}" class="custom-logo-link" rel="home" itemprop="url">
-                            <img src="{% static 'img/banner-min.jpg' %}" class="custom-logo shake-slow" alt="Kirikira.moe" itemprop="logo">
+                    <div class="banner mythemes-blog-logo" style="margin-top: 0px; margin-bottom: 0px;">
+                        <a href="{% static 'img/banner3-full.jpg' %}" rel="home" itemprop="url"></a>
+                            <img src="{% static 'img/banner3-full.jpg' %}" data-stellar-ratio="1.8" class="custom-logo" alt="Kirikira.moe"
+                                itemprop="logo">
                         </a>
                     </div>
                     <a class="mythemes-blog-title shake" href="{% url 'blog:index' %}" title="Kirikira.moe - 合缘奇缘，一期一会">Kirikira.moe</a>
@@ -364,10 +395,14 @@
                     {% endblock main %}
                     <aside class="col s12 m12 l3 mythemes-sidebar sidebar-to-right">
                         <a href="{% url 'blog:detail' 1 %}">
-                            <div id="categories-1" class="widget widget_categories shake-hard" >
-                            <video type="video/mp4" src="{%static 'img/kiri.mp4'%}" width="100%" height="100%" preload="auto" muted  loop > 
-                            </video>
-                            <ul><li class="cat-item cat-item-1"><a style="font-weight: bold" href="{% url 'blog:detail' 1 %}">Love Kiri!</a></li></ul>
+                            <div id="categories-1" class="widget widget_categories shake-hard">
+                                <video type="video/mp4" src="{%static 'img/kiri.mp4'%}" width="100%" height="100%"
+                                    preload="auto" muted loop>
+                                </video>
+                                <ul>
+                                    <li class="cat-item cat-item-1"><a style="font-weight: bold" href="{% url 'blog:detail' 1 %}">Love
+                                            Kiri!</a></li>
+                                </ul>
                             </div>
                         </a>
 
@@ -389,6 +424,7 @@
                             <ul>
                                 <li><a href="{% url 'blog:rss' %}">RSS</a></li>
                                 <li><a href="https://sometimesoffline.online/"><del>瑟琴</del>导航</a></li>
+                                <li><a href="https://kirikira.com">坏镜像(by 孬瓜)</a></li>
                             </ul>
 
                         </div>
@@ -397,13 +433,13 @@
                             <div class="menu-%e5%8f%8b%e6%83%85%e9%93%be%e6%8e%a5-container">
                                 <ul id="menu-%e5%8f%8b%e6%83%85%e9%93%be%e6%8e%a5" class="menu">
                                     <li id="menu-item-1" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-111">
-                                        <a href="https://sometimesnaive.org/">南琴浪</a>
+                                        <a href="https://sometimesnaive.org/">空气拌饭 南琴浪</a>
                                     </li>
                                     <li id="menu-item-2" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-113">
                                         <a href="https://blog.yangmame.top/">YangMame</a>
                                     </li>
                                     <li id="menu-item-3" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-126">
-                                        <a href="https://linkthis.ml/">link</a>
+                                        <a href="https://linkthis.ml/">富婆 link</a>
                                     </li>
                                     <li id="menu-item-4" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-126">
                                         <a href="https://wwyqianqian.github.io/">千千</a>
@@ -414,11 +450,19 @@
                                     <li id="menu-item-6" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-126">
                                         <a href="https://void-shana.moe/">夏娜娜</a>
                                     </li>
+                                    <li id="menu-item-9" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-126">
+                                        <a href="https://nfz.moe/">neo 喵</a>
+                                    </li>
+                                    <li id="menu-item-10" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-126">
+                                        <a href="https://blog.keep.moe/">Makito</a>
+                                    </li>
+                                    <li id="menu-item-11" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-126">
+                                        <a href="https://blog.ilxz.me/">lxz</a>
                                     <li id="menu-item-7" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-49">
                                         <a href="https://hudbt.hust.edu.cn/torrents.php?page=3/">华科-蝴蝶PT</a>
                                     </li>
                                     <li id="menu-item-8" class="menu-item menu-item-type-custom menu-item-object-custom menu-item-50">
-                                        <a href="https://pt.whu.edu.cn/torrents.php/">武大-珞樱PT</a>
+                                        <a href="https://whu.pt/">武大-珞樱PT</a>
                                     </li>
                                 </ul>
                             </div>
@@ -462,10 +506,10 @@
                                         <a href="http://mythem.es/" target="_blank" title="myThem.es" class="mythemes">myThem.es</a>.</span>
                                 </p>
                                 <p>
-                                    <span>Powered by 
+                                    <span>Powered by
                                         <a href="https://www.djangoproject.com/" target="_blank" title="Django" class="mythemes">Django</a>,
-                                        <a href="https://www.cloudflare.com/"  target="_blank" title="Cloudflare" class="mythemes">Cloudflare</a>,
-                                        <a href="https://yusa.me/"  target="_blank" title="YuSA" class="mythemes">YuSA</a>
+                                        <a href="https://www.cloudflare.com/" target="_blank" title="Cloudflare" class="mythemes">Cloudflare</a>,
+                                        <a href="https://yusa.me/" target="_blank" title="YuSA" class="mythemes">YuSA</a>
                                     </span>
                                 </p>
                             </div>

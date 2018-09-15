@@ -1,12 +1,9 @@
 [[source]]
-
-url = "https://pypi.python.org/simple"
+url = "https://cernet.mirrors.ustc.edu.cn/pypi/web/simple"
 name = "pypi"
 verify_ssl = true
 
-
 [packages]
-
 django = "==1.8.18"
 ipython = "==6.2.1"
 pytz = "*"
@@ -18,12 +15,9 @@ markdown-newtab = "*"
 django-redis = "==4.8.0"
 markdown-downheader = "*"
 "autopep8" = "*"
-
+pylint = "*"
 
 [dev-packages]
 
-
-
 [requires]
-
 python_version = "3.5"

@@ -1,5 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from blog.models import Post
+from blog.views import my_403_forbidden
 from .forms import CommentForm
 
 
@@ -12,6 +13,9 @@ def post_comment(request, post_pk):
         form = CommentForm(request.POST)
 
         if form.is_valid():
+
+            if "</a>" in request.POST.get("text"):
+                return my_403_forbidden(request)
             
             comment = form.save(commit=False)
 
