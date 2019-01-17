@@ -1,19 +1,20 @@
 [[source]]
-url = "https://cernet.mirrors.ustc.edu.cn/pypi/web/simple"
+#url = "https://mirrors.ustc.edu.cn/pypi/web/simple"
+url = "https://pypi.org/simple/"
 name = "pypi"
 verify_ssl = true
 
 [packages]
-django = "==1.8.18"
+django = "==1.11.18"
 ipython = "==6.2.1"
 pytz = "*"
 uwsgi = "*"
 python-memcached = "*"
-markdown = "*"
-pymdown-extensions = "*"
-markdown-newtab = "*"
+pymdown-extensions = "==4.8"
+markdown2 == "==2.3.5"
+markdown-newtab = "==0.2.0"
 django-redis = "==4.8.0"
-markdown-downheader = "*"
+markdown-downheader = "==1.1.0"
 "autopep8" = "*"
 pylint = "*"
 

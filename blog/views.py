@@ -23,7 +23,8 @@ def index(request, page=1):
     pages = range(1, final_page + 1)
     if page not in pages:
         return my_404_not_found(request)
-    post_list = Post.published.all().order_by('-pk')[(10 * page - 10): (10 * page)]
+    post_list = Post.published.all().order_by(
+        '-pk')[(10 * page - 10): (10 * page)]
     next_page = page + 1
 
     return render(request, 'blog/index.html', context={'post_list': post_list,
@@ -38,8 +39,10 @@ def detail(request, pk):
     post = get_object_or_404(Post, pk=pk)
     if post.status == 'draft':
         return my_404_not_found(request)
-    post.body = markdown(post.body, ['pymdownx.superfences', 'pymdownx.betterem',
-                                     NewTabExtension(), 'downheader(levels=2)',
+    post.body = markdown(post.body, ['pymdownx.superfences',
+                                     'pymdownx.betterem',
+                                     NewTabExtension(),
+                                     'downheader(levels=2)',
                                      'pymdownx.tilde', 'pymdownx.inlinehilite',
                                      'pymdownx.details', "markdown.extensions.footnotes"])
     form = CommentForm()
