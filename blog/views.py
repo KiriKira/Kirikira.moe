@@ -4,6 +4,7 @@ from comments.forms import CommentForm
 from django.http import HttpResponse
 from markdown import markdown
 from markdown_newtab import NewTabExtension
+from .fenced_code import FencedCodeExtension
 
 
 # from django.views.decorators.cache import cache_page
@@ -44,7 +45,9 @@ def detail(request, pk):
                                      NewTabExtension(),
                                      'downheader(levels=2)',
                                      'pymdownx.tilde', 'pymdownx.inlinehilite',
-                                     'pymdownx.details', "markdown.extensions.footnotes"])
+                                     'pymdownx.details', 'markdown.extensions.footnotes',
+                                     #FencedCodeExtension()
+                                     ])
     form = CommentForm()
 
     music = post.get_music()

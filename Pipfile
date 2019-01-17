@@ -1,24 +1,23 @@
 [[source]]
-#url = "https://mirrors.ustc.edu.cn/pypi/web/simple"
-url = "https://pypi.org/simple/"
 name = "pypi"
+url = "https://pypi.org/simple/"
 verify_ssl = true
 
+[dev-packages]
+
 [packages]
+autopep8 = "*"
 django = "==1.11.18"
-ipython = "==6.2.1"
+django-redis = "==4.8.0"
+markdown = "==2.6.11"
+markdown-downheader = "==1.1.0"
+markdown-newtab = "==0.2.0"
+"markdown2 =" = "==2.3.5"
+pylint = "*"
+pymdown-extensions = "==4.8"
+python-memcached = "*"
 pytz = "*"
 uwsgi = "*"
-python-memcached = "*"
-pymdown-extensions = "==4.8"
-markdown2 == "==2.3.5"
-markdown-newtab = "==0.2.0"
-django-redis = "==4.8.0"
-markdown-downheader = "==1.1.0"
-"autopep8" = "*"
-pylint = "*"
-
-[dev-packages]
 
 [requires]
 python_version = "3.7"
