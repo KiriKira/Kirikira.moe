@@ -19,7 +19,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/1.8/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '@krah8d&0nx^2$apgp8mizr93s*@6qe$-fyg8s=6_j8_1pyom$'
+SECRET_KEY = '07!x)d19udv!jv%d$r++^bt-)#_u^o65*^hk$+$y$xi22-6b+5'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -84,6 +84,12 @@ CACHES = {
     }
 }
 '''
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
+    }
+}
 
 WSGI_APPLICATION = 'kirikira.wsgi.application'
 

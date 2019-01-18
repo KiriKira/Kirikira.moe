@@ -7,17 +7,17 @@ from markdown_newtab import NewTabExtension
 from .fenced_code import FencedCodeExtension
 
 
-# from django.views.decorators.cache import cache_page
+from django.views.decorators.cache import cache_page
 
 
-# @cache_page(60*30)
+@cache_page(60*30)
 def category(request, pk):
     cate = get_object_or_404(Category, pk=pk)
     post_list = Post.published.filter(category=cate).order_by('-pk')
     return render(request, 'blog/index.html', context={'post_list': post_list})
 
 
-# @cache_page(60*30)
+@cache_page(60*30)
 def index(request, page=1):
     page = int(page)
     final_page = int((Post.published.count() - 1) / 10) + 1
@@ -35,7 +35,7 @@ def index(request, page=1):
                                                        'next_page': next_page})
 
 
-# @cache_page(60*30)
+@cache_page(60*30)
 def detail(request, pk):
     post = get_object_or_404(Post, pk=pk)
     if post.status == 'draft':
@@ -67,11 +67,11 @@ def detail(request, pk):
     return render(request, 'blog/detail.html', context=context)
 
 
-# @cache_page(60*60)
+@cache_page(60*60)
 def my_404_not_found(request):
     return HttpResponse(content=render(request, '404.html'), status=404)
 
 
-# @cache_page(60*60)
+@cache_page(60*60)
 def my_403_forbidden(request):
     return HttpResponse(content=render(request, '403.html'), status=403)
