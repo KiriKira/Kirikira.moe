@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npx astro check
+      - run: npm run build
+      # The migration pipeline end to end, on a fake Django database.
+      - run: |
+          npm run migrate:fixture
+          npm run migrate:export -- --db data/fixture.sqlite3 --out data/fixture-posts --redirects data/_redirects
+          npm run migrate:images -- --posts data/fixture-posts --out data/fixture-public/uploads/legacy --manifest data/images.json --skip-hosts i.yusa.me
+          npm run migrate:verify -- --db data/fixture.sqlite3 --posts data/fixture-posts --public data/fixture-public

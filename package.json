@@ -1,0 +1,52 @@
+{
+  "name": "kirikira-moe",
+  "type": "module",
+  "version": "2.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.23.4"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro build && wrangler dev",
+    "check": "astro check",
+    "test": "vitest run",
+    "deploy": "astro build && wrangler deploy",
+    "cf-typegen": "wrangler types",
+    "migrate:fixture": "node scripts/migrate/make-fixture.ts",
+    "migrate:export": "node scripts/migrate/export.ts",
+    "migrate:images": "node scripts/migrate/fetch-images.ts",
+    "migrate:verify": "node scripts/migrate/verify.ts",
+    "check-urls": "node scripts/check-urls.ts",
+    "db:migrate:local": "wrangler d1 migrations apply kirikira --local",
+    "db:migrate:remote": "wrangler d1 migrations apply kirikira --remote"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^14.4.2",
+    "@astrojs/markdown-satteri": "^0.4.5",
+    "@astrojs/rss": "^4.0.19",
+    "@astrojs/sitemap": "^3.7.4",
+    "@fontsource-variable/raleway": "^5.3.0",
+    "@fontsource/poiret-one": "^5.3.0",
+    "altcha-lib": "^2.7.0",
+    "aplayer": "^1.10.1",
+    "astro": "^7.4.2",
+    "jose": "^6.2.13",
+    "markdown-it": "^15.0.3",
+    "satteri": "^0.10.5"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.12",
+    "@cloudflare/workers-types": "^5.20261022.1",
+    "@types/markdown-it": "^14.2.0",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.5",
+    "wrangler": "^4.151.3"
+  },
+  "allowScripts": {
+    "workerd": true,
+    "esbuild": true,
+    "sharp": true
+  }
+}

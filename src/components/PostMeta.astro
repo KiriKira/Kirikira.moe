@@ -1,0 +1,23 @@
+---
+import { SITE } from '../site';
+import { categoryUrl, formatDate, tagUrl, type Post } from '../lib/posts';
+
+interface Props {
+  post: Post;
+}
+const { post } = Astro.props;
+const { date, updated, category, tags, draft } = post.data;
+---
+
+<div class="meta">
+  <time datetime={date.toISOString()}>on {formatDate(date)}</time>
+  {
+    updated && updated.valueOf() - date.valueOf() > 86_400_000 && (
+      <time datetime={updated.toISOString()}>(updated {formatDate(updated)})</time>
+    )
+  }
+  <a class="chip category" href={categoryUrl(category)}>{category}</a>
+  {tags.map((t) => <a class="chip tag" href={tagUrl(t)}>{t}</a>)}
+  <span class="chip">by {SITE.author}</span>
+  {draft && <span class="chip" style="background: var(--accent); color: #fff">draft</span>}
+</div>

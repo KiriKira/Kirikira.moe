@@ -1,0 +1,44 @@
+---
+interface Props {
+  current: number;
+  last: number;
+  /** Builds the URL for page n (1-based). */
+  href: (n: number) => string;
+}
+const { current, last, href } = Astro.props;
+const pages = Array.from({ length: last }, (_, i) => i + 1);
+---
+
+{
+  last > 1 && (
+    <nav aria-label="分页">
+      <ul class="pagination">
+        {current > 1 && (
+          <li>
+            <a href={href(current - 1)} rel="prev">
+              ← Prev
+            </a>
+          </li>
+        )}
+        {pages.map((n) => (
+          <li>
+            {n === current ? (
+              <span class="current" aria-current="page">
+                {n}
+              </span>
+            ) : (
+              <a href={href(n)}>{n}</a>
+            )}
+          </li>
+        ))}
+        {current < last && (
+          <li>
+            <a href={href(current + 1)} rel="next">
+              Next →
+            </a>
+          </li>
+        )}
+      </ul>
+    </nav>
+  )
+}

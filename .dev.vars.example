@@ -1,0 +1,2 @@
+# Copy to .dev.vars for `npm run dev` / `wrangler dev`. Never commit .dev.vars.
+COMMENT_SECRET=dev-only-change-me-0123456789abcdef

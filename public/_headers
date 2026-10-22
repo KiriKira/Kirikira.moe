@@ -1,0 +1,17 @@
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+  Content-Type: application/javascript; charset=utf-8
+
+/admin/*
+  X-Robots-Tag: noindex
+  Cache-Control: no-store
+
+/img/*
+  Cache-Control: public, max-age=2592000
+
+/uploads/*
+  Cache-Control: public, max-age=2592000
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin

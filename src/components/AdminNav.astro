@@ -1,0 +1,104 @@
+---
+interface Props {
+  current: 'comments' | 'rules';
+  who: string;
+}
+const { current, who } = Astro.props;
+---
+
+<nav class="admin-nav card">
+  <a href="/admin/comments" aria-current={current === 'comments' ? 'page' : undefined}>评论</a>
+  <a href="/admin/rules" aria-current={current === 'rules' ? 'page' : undefined}>过滤规则</a>
+  <a href="/admin/">写文章 (CMS)</a>
+  <span class="who">{who}</span>
+</nav>
+
+<style is:global>
+  .admin-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    align-items: center;
+    padding: 12px var(--gutter);
+    margin-bottom: 20px;
+  }
+  .admin-nav a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .admin-nav a[aria-current='page'] {
+    color: var(--accent);
+  }
+  .admin-nav .who {
+    margin-left: auto;
+    color: var(--text-faint);
+    font-size: 12px;
+  }
+  .admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .admin-table th,
+  .admin-table td {
+    text-align: left;
+    vertical-align: top;
+    padding: 8px 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .admin-filters,
+  .admin-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .admin-filters input,
+  .admin-filters select,
+  .admin-actions select,
+  .admin-form input,
+  .admin-form select {
+    font: inherit;
+    font-size: 13px;
+    padding: 4px 6px;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .admin button {
+    font: inherit;
+    font-size: 13px;
+    padding: 4px 10px;
+    cursor: pointer;
+    background: var(--slate);
+    color: #fff;
+    border: 0;
+  }
+  .admin button.danger {
+    background: var(--accent);
+  }
+  .badge {
+    display: inline-block;
+    padding: 1px 6px;
+    font-size: 11px;
+    border-radius: 2px;
+    background: var(--surface-muted);
+    color: var(--text-muted);
+  }
+  .badge.spam {
+    background: var(--accent);
+    color: #fff;
+  }
+  .badge.published {
+    background: var(--chip);
+    color: #fff;
+  }
+  .muted {
+    color: var(--text-faint);
+  }
+  .admin .comment-body {
+    max-width: 60ch;
+  }
+</style>

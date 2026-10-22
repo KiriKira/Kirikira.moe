@@ -1,0 +1,56 @@
+---
+import type { GetStaticPaths } from 'astro';
+import { render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import PostMeta from '../../components/PostMeta.astro';
+import MusicPlayer from '../../components/MusicPlayer.astro';
+import Comments from '../../components/Comments.astro';
+import { commentThreadId, getPosts, postUrl } from '../../lib/posts';
+
+export const getStaticPaths = (async () => {
+  const posts = await getPosts();
+  return posts.map((post, i) => ({
+    params: { slug: post.id },
+    props: { post, newer: posts[i - 1], older: posts[i + 1] },
+  }));
+}) satisfies GetStaticPaths;
+
+const { post, newer, older } = Astro.props;
+const { Content } = await render(post);
+const { title, excerpt, date, music } = post.data;
+---
+
+<Base title={title} description={excerpt || undefined} type="article" publishedTime={date}>
+  {music && <MusicPlayer music={music} slot="top" />}
+  <article class="card">
+    <h1 class="post-title">{title}</h1>
+    <PostMeta post={post} />
+    <div class="prose">
+      <Content />
+    </div>
+  </article>
+
+  <nav class="post-nav" aria-label="上一篇/下一篇">
+    {newer ? <a href={postUrl(newer)}>← {newer.data.title}</a> : <span />}
+    {older && <a href={postUrl(older)}>{older.data.title} →</a>}
+  </nav>
+
+  <Comments threadId={commentThreadId(post)} />
+</Base>
+
+<style>
+  .post-nav {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 20px 0;
+    font-size: 14px;
+  }
+  .post-nav a {
+    color: var(--text-muted);
+    text-decoration: none;
+  }
+  .post-nav a:hover {
+    color: var(--accent);
+  }
+</style>

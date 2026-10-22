@@ -1,0 +1,239 @@
+---
+interface Props {
+  /** Comment thread id (post front-matter `cid`). */
+  threadId: string;
+}
+const { threadId } = Astro.props;
+---
+
+<section class="comments card" id="comments" data-thread={threadId}>
+  <h2 class="comments-title">评论 <span class="comments-count"></span></h2>
+  <ol class="comment-list" aria-live="polite">
+    <li class="comment-placeholder">评论加载中…</li>
+  </ol>
+
+  <form class="comment-form" novalidate>
+    <h3 class="comment-form-title">Leave a reply</h3>
+    <p class="replying" hidden>
+      回复 <b></b>
+      <button type="button" class="link-button cancel-reply">取消回复</button>
+    </p>
+    <label class="field field-body">
+      <span>评论内容（支持 Markdown）</span>
+      <textarea name="body" required maxlength="5000" rows="5"></textarea>
+    </label>
+    <div class="field-row">
+      <label class="field">
+        <span>昵称 *</span>
+        <input name="name" required maxlength="50" autocomplete="nickname" />
+      </label>
+      <label class="field">
+        <span>邮箱（不会公开）</span>
+        <input name="email" type="email" maxlength="255" autocomplete="email" />
+      </label>
+      <label class="field">
+        <span>网址（不会公开）</span>
+        <input name="url" type="url" maxlength="200" inputmode="url" placeholder="https://" />
+      </label>
+    </div>
+    <!-- Honeypot: people never see or fill this; naive bots do. -->
+    <div class="hp" aria-hidden="true">
+      <label>Website <input name="website" tabindex="-1" autocomplete="off" /></label>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="more-link submit">Comment</button>
+      <p class="form-status" role="status"></p>
+    </div>
+  </form>
+  <noscript><p class="empty">评论区需要启用 JavaScript。</p></noscript>
+</section>
+
+<script>
+  import { initComments } from '../scripts/comments';
+  for (const el of document.querySelectorAll<HTMLElement>('section.comments[data-thread]')) initComments(el);
+</script>
+
+<style is:global>
+  .comments {
+    margin-top: 20px;
+  }
+  .comments-title {
+    margin: 0 0 16px;
+    font-size: 22px;
+  }
+  .comments-count {
+    color: var(--text-faint);
+    font-size: 0.7em;
+  }
+  .comment-list,
+  .comment-replies {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .comment-replies {
+    margin: 12px 0 0 28px;
+    padding-left: 16px;
+    border-left: 2px solid var(--border);
+  }
+  .comment {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 0 14px;
+    padding: 14px 0;
+  }
+  .comment-list > .comment + .comment {
+    border-top: 1px solid var(--border);
+  }
+  .comment-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: 18px;
+    user-select: none;
+  }
+  .comment-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    align-items: baseline;
+    font-size: 13px;
+  }
+  .comment-author {
+    font-weight: 700;
+    color: var(--heading);
+  }
+  .comment-time {
+    color: var(--text-faint);
+  }
+  .comment-body {
+    overflow-wrap: anywhere;
+  }
+  .comment-body p {
+    margin: 0.4em 0;
+  }
+  .comment-body pre {
+    overflow-x: auto;
+    padding: 8px 12px;
+    background: var(--code-bg);
+    font-size: 13px;
+  }
+  .comment-body code {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    background: var(--code-bg);
+    padding: 0.1em 0.3em;
+  }
+  .comment-body blockquote {
+    margin: 0.4em 0;
+    padding-left: 12px;
+    border-left: 3px solid var(--border);
+    color: var(--text-muted);
+  }
+  .comment-body a {
+    color: var(--accent);
+  }
+  .link-button {
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    font-size: 12px;
+    color: var(--text-faint);
+    cursor: pointer;
+  }
+  .link-button:hover {
+    color: var(--accent);
+  }
+  .comment-placeholder {
+    color: var(--text-faint);
+    padding: 12px 0;
+  }
+  .comment-form {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+  .comment-form-title {
+    margin: 0 0 12px;
+    font-size: 18px;
+  }
+  .field {
+    display: grid;
+    gap: 4px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .field-row {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    margin-top: 12px;
+  }
+  .field input,
+  .field textarea {
+    width: 100%;
+    font: inherit;
+    font-size: 15px;
+    color: var(--text);
+    background: var(--surface);
+    border: 0;
+    border-bottom: 1px solid var(--text-faint);
+    padding: 6px 2px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .field textarea {
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    resize: vertical;
+    min-height: 120px;
+  }
+  .field input:focus,
+  .field textarea:focus {
+    border-color: var(--chip);
+    box-shadow: 0 1px 0 0 var(--chip);
+  }
+  .field [aria-invalid='true'] {
+    border-color: var(--accent);
+  }
+  .field-error {
+    color: var(--accent);
+    font-size: 12px;
+  }
+  .hp {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+  .form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 16px;
+    margin-top: 16px;
+  }
+  .form-actions .submit {
+    margin: 0;
+    border: 0;
+    cursor: pointer;
+  }
+  .form-actions .submit[disabled] {
+    opacity: 0.6;
+    cursor: progress;
+  }
+  .form-status {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .form-status.error {
+    color: var(--accent);
+  }
+</style>

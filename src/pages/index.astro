@@ -1,0 +1,9 @@
+---
+import PostListPage from '../components/PostListPage.astro';
+import { getPosts } from '../lib/posts';
+import { homePageHref, pageCount, pageSlice } from '../lib/paginate';
+
+const posts = await getPosts();
+---
+
+<PostListPage posts={pageSlice(posts, 1)} current={1} last={pageCount(posts.length)} href={homePageHref} />

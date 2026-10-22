@@ -1,0 +1,39 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "kirikira-moe",
+  // Custom entry: wraps Astro's fetch handler and adds the daily cron job.
+  "main": "./src/worker.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist/client",
+    "binding": "ASSETS",
+    // Return the prerendered 404 page for unknown static paths.
+    "not_found_handling": "404-page"
+  },
+  "observability": { "enabled": true },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "kirikira",
+      // Fill in after `npx wrangler d1 create kirikira` (see docs/MIGRATION_RUNBOOK.md).
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "triggers": {
+    // 03:17 UTC daily: purge old spam (see src/worker.ts).
+    "crons": ["17 3 * * *"]
+  },
+  "vars": {
+    // Cloudflare Access team domain, e.g. "kiri.cloudflareaccess.com". Leave empty to
+    // disable JWT checks in local dev ONLY (production refuses admin requests then).
+    "ACCESS_TEAM_DOMAIN": "",
+    // The Access application AUD tag protecting /admin/* and /api/admin/*.
+    "ACCESS_AUD": "",
+    // Days to keep comments marked as spam before the cron job deletes them.
+    "SPAM_RETENTION_DAYS": "30"
+  }
+  // Secrets (set with `npx wrangler secret put <NAME>`, and in .dev.vars locally):
+  //   COMMENT_SECRET  - random 32+ byte string; signs proof-of-work challenges and hashes IPs.
+}

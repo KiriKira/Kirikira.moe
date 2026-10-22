@@ -1,0 +1,88 @@
+---
+import Base from '../../layouts/Base.astro';
+import AdminNav from '../../components/AdminNav.astro';
+import { env } from '../../lib/env';
+import { adminIdentity } from '../../lib/access';
+import { listRules } from '../../lib/comments/store';
+import { SPAM_THRESHOLD } from '../../lib/comments/spam';
+
+export const prerender = false;
+
+const who = await adminIdentity(Astro.request, env);
+if (!who) return new Response('Forbidden', { status: 403 });
+
+const rules = await listRules(env.DB);
+const KIND_LABEL: Record<string, string> = {
+  keyword: '关键词',
+  domain: '域名',
+  regex: '正则',
+  ip_hash: 'IP 哈希',
+  email: '邮箱',
+};
+---
+
+<Base title="过滤规则" bare noindex>
+  <div class="admin">
+    <AdminNav current="rules" who={who} />
+    <section class="card">
+      <h1 class="post-title">过滤规则</h1>
+      <p class="muted">
+        每条评论会按内置规则和下面的自定义规则累加分数，总分 ≥ {SPAM_THRESHOLD} 即静默判为垃圾（发送者看不出来）。
+        权重 100 = 直接拦截；较小的权重只在与其它可疑特征叠加时生效。
+      </p>
+
+      <form class="admin-form admin-filters" method="post" action="/api/admin/comments">
+        <input type="hidden" name="action" value="add-rule" />
+        <input type="hidden" name="redirect" value="/admin/rules" />
+        <select name="kind" aria-label="类型">
+          <option value="keyword">关键词（不区分大小写）</option>
+          <option value="domain">域名（含子域名）</option>
+          <option value="regex">正则表达式</option>
+          <option value="email">邮箱</option>
+          <option value="ip_hash">IP 哈希</option>
+        </select>
+        <input name="pattern" required placeholder="内容" aria-label="内容" />
+        <input name="weight" type="number" value="100" min="-1000" max="1000" style="width: 6em" aria-label="权重" />
+        <input name="note" placeholder="备注（可选）" aria-label="备注" />
+        <button type="submit">添加</button>
+      </form>
+
+      <form method="post" action="/api/admin/comments">
+        <input type="hidden" name="action" value="delete-rule" />
+        <input type="hidden" name="redirect" value="/admin/rules" />
+        <table class="admin-table">
+          <thead>
+            <tr><th>类型</th><th>内容</th><th>权重</th><th>备注</th><th></th></tr>
+          </thead>
+          <tbody>
+            {
+              rules.map((r) => (
+                <tr>
+                  <td>{KIND_LABEL[r.kind] ?? r.kind}</td>
+                  <td>
+                    <code>{r.pattern}</code>
+                  </td>
+                  <td>{r.weight}</td>
+                  <td class="muted">{r.note}</td>
+                  <td>
+                    <button name="id" value={r.id} class="danger">
+                      删除
+                    </button>
+                  </td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+        {rules.length === 0 && <p class="empty">还没有自定义规则。</p>}
+      </form>
+
+      <form method="post" action="/api/admin/comments" style="margin-top: 24px">
+        <input type="hidden" name="action" value="purge-spam" />
+        <input type="hidden" name="redirect" value="/admin/rules" />
+        <button class="danger" onclick="return confirm('立即永久删除所有垃圾评论？')">立即清空所有垃圾评论</button>
+        <span class="muted">（每天也会自动删除 {env.SPAM_RETENTION_DAYS || 30} 天前的垃圾评论）</span>
+      </form>
+    </section>
+  </div>
+</Base>

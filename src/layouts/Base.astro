@@ -1,0 +1,111 @@
+---
+import '../styles/global.css';
+import Sidebar from '../components/Sidebar.astro';
+import { SITE } from '../site';
+
+interface Props {
+  title?: string;
+  description?: string;
+  image?: string;
+  type?: 'website' | 'article';
+  publishedTime?: Date;
+  /** Hide the sidebar (admin pages). */
+  bare?: boolean;
+  noindex?: boolean;
+}
+
+const { title, description = SITE.description, image = '/img/kiri.jpg', type = 'website', publishedTime, bare = false, noindex = false } =
+  Astro.props;
+const fullTitle = title ? `${title} | ${SITE.title}` : `It's me, Kiri! | ${SITE.title}`;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const imageUrl = new URL(image, Astro.site);
+const year = new Date().getFullYear();
+---
+
+<!doctype html>
+<html lang={SITE.lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="alternate" type="application/rss+xml" title={SITE.feedTitle} href="/rss.xml" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#15191c" media="(prefers-color-scheme: dark)" />
+    <meta property="og:site_name" content={SITE.title} />
+    <meta property="og:title" content={title ?? SITE.ogTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content={type} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={imageUrl} />
+    {publishedTime && <meta property="article:published_time" content={publishedTime.toISOString()} />}
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    <slot name="head" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="banner" aria-hidden="true">
+        <img src="/img/banner3-full.jpg" alt="" width="1920" height="1080" fetchpriority="high" />
+      </div>
+      <div class="container identity">
+        <a class="site-title shake" href="/" title={`${SITE.title} - ${SITE.tagline}`}>{SITE.title}</a>
+        <a class="site-tagline shake" href="/" title={`${SITE.title} - ${SITE.tagline}`}>{SITE.tagline}</a>
+      </div>
+    </header>
+
+    <div class="page">
+      <div class="container">
+        <slot name="top" />
+        {
+          bare ? (
+            <main>
+              <slot />
+            </main>
+          ) : (
+            <div class="layout">
+              <main>
+                <slot />
+              </main>
+              <Sidebar />
+            </div>
+          )
+        }
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <div class="container">
+        <p>Copyright © {SITE.since}-{year} {SITE.author}.</p>
+        <p>
+          Theme inspired by <a href="http://mythem.es/" target="_blank" rel="noopener">myThem.es</a>. Powered by{' '}
+          <a href="https://astro.build/" target="_blank" rel="noopener">Astro</a>{' '}&amp;{' '}
+          <a href="https://www.cloudflare.com/" target="_blank" rel="noopener">Cloudflare</a>.
+        </p>
+      </div>
+    </footer>
+
+    <script>
+      // Parallax for the banner (replaces jquery.stellar).
+      const root = document.documentElement;
+      let ticking = false;
+      addEventListener(
+        'scroll',
+        () => {
+          if (ticking) return;
+          ticking = true;
+          requestAnimationFrame(() => {
+            root.style.setProperty('--scroll', String(Math.min(scrollY, 400)));
+            ticking = false;
+          });
+        },
+        { passive: true },
+      );
+
+      // The Django site registered a caching service worker; make sure it is gone.
+      navigator.serviceWorker?.getRegistrations().then((regs) => regs.forEach((r) => r.unregister()));
+    </script>
+  </body>
+</html>

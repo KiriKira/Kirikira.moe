@@ -1,0 +1,58 @@
+---
+import { FRIENDS, SIDEBAR_LINKS, SITE } from '../site';
+import { categoryUrl, getPosts, groupBy } from '../lib/posts';
+
+const posts = await getPosts();
+const categories = [...groupBy(posts, (p) => [p.data.category])].sort((a, b) => b[1].length - a[1].length);
+---
+
+<aside class="sidebar">
+  <a class="widget love-kiri shake" href={SITE.loveKiriHref}>
+    <video src="/img/kiri.mp4" poster="/img/kiri.jpg" muted loop autoplay playsinline preload="metadata"></video>
+    <span>Love Kiri!</span>
+  </a>
+
+  <section class="widget">
+    <h2 class="widget-title">分类</h2>
+    <ul>
+      {
+        categories.map(([name, list]) => (
+          <li>
+            <a href={categoryUrl(name)}>
+              {name}
+              <span class="count">{list.length}</span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+
+  <section class="widget">
+    <h2 class="widget-title">功能</h2>
+    <ul>
+      {
+        SIDEBAR_LINKS.map((l) => (
+          <li>
+            <a href={l.href}>{l.html ? <span set:html={l.html} /> : l.label}</a>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+
+  <section class="widget">
+    <h2 class="widget-title">友情链接</h2>
+    <ul>
+      {
+        FRIENDS.map((f) => (
+          <li>
+            <a href={f.href} target="_blank" rel="noopener">
+              {f.name}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+</aside>

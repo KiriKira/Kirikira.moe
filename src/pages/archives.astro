@@ -1,0 +1,29 @@
+---
+import Base from '../layouts/Base.astro';
+import { formatDate, getPosts, groupBy, postUrl } from '../lib/posts';
+
+const posts = await getPosts();
+const years = [...groupBy(posts, (p) => [p.data.date.getUTCFullYear()])];
+---
+
+<Base title="归档">
+  <article class="card">
+    <h1 class="post-title">归档</h1>
+    <p class="meta">共 {posts.length} 篇</p>
+    {
+      years.map(([year, list]) => (
+        <section>
+          <h2 class="archive-year">{year}</h2>
+          <ul class="archive-list">
+            {list.map((p) => (
+              <li>
+                <time datetime={p.data.date.toISOString()}>{formatDate(p.data.date)}</time>
+                <a href={postUrl(p)}>{p.data.title}</a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))
+    }
+  </article>
+</Base>

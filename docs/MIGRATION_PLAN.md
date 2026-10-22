@@ -1,4 +1,12 @@
-# Kirikira.moe 迁移与重构方案（Django → Astro 6 on Cloudflare Workers）
+# Kirikira.moe 迁移与重构方案（Django → Astro on Cloudflare Workers）
+
+> **实现说明（2026-10-22，与下文原计划的差异）**
+> - 实际使用 **Astro 7**（写计划时以为最新是 6）+ `@astrojs/cloudflare` 14；Markdown 由 Astro 7 默认的 Sätteri 处理，
+>   开启了 subscript 以还原 pymdownx.tilde 的 `~下标~`。
+> - 工作量证明只用 `altcha-lib`（服务端签发/校验 + 浏览器求解，均为 WebCrypto），不引入 ALTCHA 的 UI 组件；签名挑战同时充当表单令牌和时间陷阱。
+> - 迁移文章的评论线程 id 用 `legacyId`（而非可被 CMS 改动的 `cid`），新文章用 CMS 生成的 uuid。
+> - 评论状态只有 `published` / `spam` 两种，删除即物理删除；没有做邮件通知（可后续用 Email Routing 的 `send_email` 绑定加上）。
+> - 执行步骤以 [MIGRATION_RUNBOOK.md](MIGRATION_RUNBOOK.md) 为准。
 
 ## Context
 

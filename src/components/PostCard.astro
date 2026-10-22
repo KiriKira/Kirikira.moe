@@ -1,0 +1,17 @@
+---
+import PostMeta from './PostMeta.astro';
+import { postUrl, type Post } from '../lib/posts';
+
+interface Props {
+  post: Post;
+}
+const { post } = Astro.props;
+const url = postUrl(post);
+---
+
+<article class="card">
+  <h2 class="post-title"><a href={url}>{post.data.title}</a></h2>
+  <PostMeta post={post} />
+  {post.data.excerpt && <p class="excerpt">{post.data.excerpt}</p>}
+  <a class="more-link" href={url} aria-label={`阅读《${post.data.title}》`}>Read More</a>
+</article>

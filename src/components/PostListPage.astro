@@ -1,0 +1,24 @@
+---
+import Base from '../layouts/Base.astro';
+import PostCard from './PostCard.astro';
+import Pagination from './Pagination.astro';
+import type { Post } from '../lib/posts';
+
+interface Props {
+  posts: Post[];
+  current: number;
+  last: number;
+  href: (n: number) => string;
+  title?: string;
+  heading?: string;
+}
+const { posts, current, last, href, title, heading } = Astro.props;
+---
+
+<Base title={title}>
+  {heading && <h1 class="post-title" style="margin-bottom: 20px">{heading}</h1>}
+  <div class="post-list">
+    {posts.length ? posts.map((post) => <PostCard post={post} />) : <p class="empty">暂时还没有发布的文章！</p>}
+  </div>
+  <Pagination current={current} last={last} href={href} />
+</Base>

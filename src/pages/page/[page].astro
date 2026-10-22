@@ -1,0 +1,19 @@
+---
+import type { GetStaticPaths } from 'astro';
+import PostListPage from '../../components/PostListPage.astro';
+import { getPosts } from '../../lib/posts';
+import { homePageHref, pageCount, pageSlice } from '../../lib/paginate';
+
+export const getStaticPaths = (async () => {
+  const posts = await getPosts();
+  const last = pageCount(posts.length);
+  return Array.from({ length: last }, (_, i) => ({
+    params: { page: String(i + 1) },
+    props: { page: i + 1, last, posts: pageSlice(posts, i + 1) },
+  }));
+}) satisfies GetStaticPaths;
+
+const { page, last, posts } = Astro.props;
+---
+
+<PostListPage posts={posts} current={page} last={last} href={homePageHref} title={`第 ${page} 页`} />

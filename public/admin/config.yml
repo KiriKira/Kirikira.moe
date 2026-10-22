@@ -1,0 +1,67 @@
+# Sveltia CMS — https://sveltiacms.app/en/docs
+# Open https://kirikira.moe/admin/ , sign in with a GitHub personal access token
+# (fine-grained, this repo only, Contents: read & write). Every save is a commit to
+# `main`; Cloudflare Workers Builds then rebuilds and deploys the site (~1-2 min).
+backend:
+  name: github
+  repo: KiriKira/Kirikira.moe
+  branch: main
+  commit_messages:
+    create: 'post: add “{{slug}}”'
+    update: 'post: update “{{slug}}”'
+    delete: 'post: delete “{{slug}}”'
+    uploadMedia: 'media: upload “{{path}}”'
+    deleteMedia: 'media: delete “{{path}}”'
+
+site_url: https://kirikira.moe
+display_url: https://kirikira.moe
+locale: zh_Hans
+
+media_folder: public/uploads
+public_folder: /uploads
+
+collections:
+  - name: posts
+    label: 文章
+    label_singular: 文章
+    folder: src/content/posts
+    extension: md
+    format: frontmatter
+    create: true
+    # New posts get an editable slug (English, e.g. "my-new-post"); it becomes /post/<slug>/.
+    slug: '{{fields._slug}}'
+    identifier_field: title
+    summary: '{{title}} ({{date | date("YYYY-MM-DD")}}){{draft | ternary(" [草稿]", "")}}'
+    sortable_fields:
+      fields: [date, title, category]
+      default: { field: date, direction: descending }
+    view_filters:
+      - { label: 草稿, field: draft, pattern: true }
+    preview_path: 'post/{{slug}}/'
+    fields:
+      - { name: title, label: 标题, widget: string }
+      - { name: date, label: 发布时间, widget: datetime }
+      - { name: updated, label: 更新时间, widget: datetime, required: false }
+      - name: category
+        label: 分类
+        widget: string
+        default: 未分类
+        hint: 与已有分类同名即归入该分类
+      - { name: tags, label: 标签, widget: list, required: false, default: [] }
+      - { name: excerpt, label: 摘要, widget: text, required: false, hint: 首页列表与 RSS 中显示 }
+      - { name: draft, label: 草稿, widget: boolean, default: false, hint: 草稿不会出现在线上站点 }
+      - name: music
+        label: 背景音乐（APlayer）
+        widget: object
+        required: false
+        collapsed: true
+        fields:
+          - { name: title, label: 曲名, widget: string }
+          - { name: author, label: 歌手, widget: string, required: false }
+          - { name: url, label: 音频 URL, widget: string }
+          - { name: pic, label: 封面 URL, widget: string, required: false }
+      - { name: body, label: 正文, widget: markdown }
+      # Comment thread id. Generated once; never edit (it links the post to its comments).
+      - { name: cid, label: 评论 ID, widget: uuid, read_only: true, required: false }
+      - { name: slug, label: 旧站 slug, widget: string, required: false, hint: 迁移文章保留旧 URL 用，新文章留空 }
+      - { name: legacyId, label: 旧站文章 ID, widget: number, value_type: int, required: false, hint: 迁移数据，勿改 }

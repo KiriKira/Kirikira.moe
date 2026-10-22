@@ -1,0 +1,28 @@
+---
+interface Props {
+  music: { title: string; author: string; url: string; pic?: string };
+}
+const { music } = Astro.props;
+---
+
+<div class="music-player card" style="padding: 0; margin-bottom: 20px" data-music={JSON.stringify(music)}></div>
+
+<script>
+  import 'aplayer/dist/APlayer.min.css';
+
+  // Load APlayer only when the player scrolls into view.
+  for (const el of document.querySelectorAll<HTMLElement>('.music-player')) {
+    const io = new IntersectionObserver(async (entries) => {
+      if (!entries.some((e) => e.isIntersecting)) return;
+      io.disconnect();
+      const { default: APlayer } = await import('aplayer');
+      const music = JSON.parse(el.dataset.music!);
+      new APlayer({
+        container: el,
+        theme: '#e53935',
+        audio: [{ name: music.title, artist: music.author, url: music.url, cover: music.pic }],
+      });
+    });
+    io.observe(el);
+  }
+</script>

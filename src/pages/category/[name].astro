@@ -1,0 +1,17 @@
+---
+import type { GetStaticPaths } from 'astro';
+import PostListPage from '../../components/PostListPage.astro';
+import { categoryUrl, getPosts, groupBy } from '../../lib/posts';
+
+export const getStaticPaths = (async () => {
+  const posts = await getPosts();
+  return [...groupBy(posts, (p) => [p.data.category])].map(([name, list]) => ({
+    params: { name },
+    props: { name, posts: list },
+  }));
+}) satisfies GetStaticPaths;
+
+const { name, posts } = Astro.props;
+---
+
+<PostListPage posts={posts} current={1} last={1} href={() => categoryUrl(name)} title={`分类：${name}`} heading={`分类：${name}`} />

@@ -1,0 +1,165 @@
+---
+import Base from '../../layouts/Base.astro';
+import AdminNav from '../../components/AdminNav.astro';
+import { env } from '../../lib/env';
+import { adminIdentity } from '../../lib/access';
+import { renderCommentBody } from '../../lib/comments/render';
+import { adminList, countByStatus } from '../../lib/comments/store';
+import { getThreads, type Threads } from '../../lib/comments/threads';
+import type { CommentStatus } from '../../lib/comments/types';
+
+export const prerender = false;
+
+const who = await adminIdentity(Astro.request, env);
+if (!who) return new Response('Forbidden', { status: 403 });
+
+const PAGE_SIZE = 50;
+const params = Astro.url.searchParams;
+const statusParam = params.get('status');
+const status: CommentStatus | 'all' = statusParam === 'published' || statusParam === 'spam' ? statusParam : 'all';
+const q = params.get('q')?.trim() ?? '';
+const postId = params.get('post')?.trim() ?? '';
+const page = Math.max(1, Number(params.get('page')) || 1);
+
+const [{ rows, total }, counts] = await Promise.all([
+  adminList(env.DB, { status, q, postId, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
+  countByStatus(env.DB),
+]);
+let threads: Threads = {};
+try {
+  threads = await getThreads(env, Astro.url);
+} catch {
+  /* titles are cosmetic */
+}
+
+const self = Astro.url.pathname + Astro.url.search;
+const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+const qs = (overrides: Record<string, string | number>) => {
+  const p = new URLSearchParams(params);
+  for (const [k, v] of Object.entries(overrides)) {
+    if (v === '' || v === undefined) p.delete(k);
+    else p.set(k, String(v));
+  }
+  return `?${p}`;
+};
+const time = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', dateStyle: 'short', timeStyle: 'short' });
+const reasons = (json: string | null) => {
+  try {
+    return json ? (JSON.parse(json) as string[]) : [];
+  } catch {
+    return [];
+  }
+};
+---
+
+<Base title="评论管理" bare noindex>
+  <div class="admin">
+    <AdminNav current="comments" who={who} />
+    <section class="card">
+      <form class="admin-filters" method="get">
+        <select name="status">
+          <option value="all" selected={status === 'all'}>全部 ({counts.published + counts.spam})</option>
+          <option value="published" selected={status === 'published'}>公开 ({counts.published})</option>
+          <option value="spam" selected={status === 'spam'}>垃圾 ({counts.spam})</option>
+        </select>
+        <input name="q" value={q} placeholder="搜索昵称/内容/邮箱/网址" />
+        <input name="post" value={postId} placeholder="文章 cid" size="8" />
+        <button type="submit">筛选</button>
+        <span class="muted">共 {total} 条</span>
+      </form>
+
+      <form method="post" action="/api/admin/comments" id="bulk">
+        <input type="hidden" name="redirect" value={self} />
+        <div class="admin-actions">
+          <span class="muted">对勾选的评论：</span>
+          <button name="action" value="publish">恢复公开</button>
+          <button name="action" value="spam">标为垃圾</button>
+          <button name="action" value="ban-domains" title="把评论里的所有链接域名加入黑名单，并标为垃圾">封禁链接域名</button>
+          <button name="action" value="ban-ip" title="按 IP 哈希封禁，并标为垃圾">封禁 IP</button>
+          <button name="action" value="ban-email" title="按邮箱封禁，并标为垃圾">封禁邮箱</button>
+          <button name="action" value="delete" class="danger" onclick="return confirm('永久删除勾选的评论？')">永久删除</button>
+        </div>
+
+        <div style="overflow-x: auto">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th><input type="checkbox" aria-label="全选" id="check-all" /></th>
+                <th>评论</th>
+                <th>作者</th>
+                <th>文章</th>
+                <th>状态</th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                rows.map((c) => (
+                  <tr>
+                    <td>
+                      <input type="checkbox" name="id" value={c.id} aria-label={`选择 #${c.id}`} />
+                    </td>
+                    <td>
+                      <div class="muted">
+                        #{c.id} · {time.format(new Date(c.created_at))}
+                        {c.parent_id && <> · 回复 #{c.parent_id}</>}
+                        {c.legacy_id && <> · 旧站 #{c.legacy_id}</>}
+                      </div>
+                      <div class="comment-body" set:html={renderCommentBody(c.body)} />
+                    </td>
+                    <td>
+                      <strong>{c.name}</strong>
+                      {c.email && <div class="muted">{c.email}</div>}
+                      {c.url && <div class="muted">{c.url}</div>}
+                      {c.ip_hash && (
+                        <div class="muted" title={c.user_agent ?? ''}>
+                          ip:{c.ip_hash.slice(0, 10)}
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      {threads[c.post_id] ? (
+                        <a href={`${threads[c.post_id].url}#comment-${c.id}`} target="_blank">
+                          {threads[c.post_id].title}
+                        </a>
+                      ) : (
+                        <span class="muted">{c.post_id}</span>
+                      )}
+                      <div>
+                        <a class="muted" href={qs({ post: c.post_id, page: '' })}>
+                          只看此文
+                        </a>
+                      </div>
+                    </td>
+                    <td>
+                      <span class={`badge ${c.status}`}>{c.status === 'spam' ? '垃圾' : '公开'}</span>
+                      {c.spam_score > 0 && <div class="muted">分数 {c.spam_score}</div>}
+                      {reasons(c.spam_reasons).map((r) => (
+                        <div class="muted">{r}</div>
+                      ))}
+                    </td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+        </div>
+      </form>
+      {rows.length === 0 && <p class="empty">没有评论。</p>}
+
+      <nav class="admin-filters" style="margin-top: 14px">
+        {page > 1 && <a href={qs({ page: page - 1 })}>← 上一页</a>}
+        <span class="muted">
+          {page} / {pages}
+        </span>
+        {page < pages && <a href={qs({ page: page + 1 })}>下一页 →</a>}
+      </nav>
+    </section>
+  </div>
+</Base>
+
+<script>
+  const all = document.getElementById('check-all') as HTMLInputElement | null;
+  all?.addEventListener('change', () => {
+    for (const box of document.querySelectorAll<HTMLInputElement>('#bulk input[name="id"]')) box.checked = all.checked;
+  });
+</script>
