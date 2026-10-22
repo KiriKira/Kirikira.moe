@@ -7,6 +7,37 @@
     <title>Kirikira.moe CMS</title>
     <!-- Sveltia CMS reads ./config.yml. Pinned to the 0.x line; bump when you want new features. -->
     <script src="https://unpkg.com/@sveltia/cms@0/dist/sveltia-cms.js"></script>
+    <script>
+      // Editor buttons that write the plain-Markdown media syntax the site understands
+      // (see src/lib/markdown/media.mjs), so posts never need hand-written HTML.
+      CMS.registerEditorComponent({
+        id: 'video',
+        label: '视频',
+        icon: 'movie',
+        fields: [
+          { name: 'src', label: '视频文件（建议上传到 R2）', widget: 'file' },
+          { name: 'caption', label: '说明', widget: 'string', required: false },
+          { name: 'loop', label: '像 GIF 一样静音循环自动播放', widget: 'boolean', default: false },
+        ],
+        pattern: /^!\[([^\]]*)\]\((\S+\.(?:mp4|webm|m4v|mov|ogv))(?: "(loop)")?\)$/m,
+        fromBlock: (m) => ({ caption: m[1], src: m[2], loop: m[3] === 'loop' }),
+        toBlock: ({ src = '', caption = '', loop = false }) => `![${caption}](${src}${loop ? ' "loop"' : ''})`,
+        toPreview: ({ src = '', loop = false }) =>
+          `<video src="${src}" ${loop ? 'autoplay muted loop' : 'controls'} playsinline style="max-width:100%"></video>`,
+      });
+
+      CMS.registerEditorComponent({
+        id: 'embed',
+        label: '嵌入 B站 / YouTube / 网易云',
+        icon: 'smart_display',
+        fields: [{ name: 'url', label: '视频或歌曲页面链接', widget: 'string' }],
+        pattern: /^<?(https?:\/\/(?:www\.|m\.)?(?:bilibili\.com|youtube\.com|youtu\.be|music\.163\.com)\/\S*?)>?$/m,
+        fromBlock: (m) => ({ url: m[1] }),
+        // Angle brackets keep the URL intact when the editor re-serialises Markdown.
+        toBlock: ({ url = '' }) => `<${url}>`,
+        toPreview: ({ url = '' }) => `<p>▶ 嵌入：<a href="${url}">${url}</a></p>`,
+      });
+    </script>
   </head>
   <body></body>
 </html>

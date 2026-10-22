@@ -15,10 +15,29 @@ backend:
 
 site_url: https://kirikira.moe
 display_url: https://kirikira.moe
-locale: zh_Hans
 
+# Small images can live in the repo (public/uploads), but put photos and every
+# video/audio file in Cloudflare R2 (served from media.kirikira.moe): it keeps the git
+# repo small and Workers static assets cap single files at 25 MiB.
 media_folder: public/uploads
 public_folder: /uploads
+
+media_libraries:
+  cloudflare_r2:
+    # Fill these in after creating the bucket (docs/MIGRATION_RUNBOOK.md §7). The R2
+    # *secret* key never goes here: Sveltia asks for it once and keeps it in your browser.
+    access_key_id: REPLACE_WITH_R2_ACCESS_KEY_ID
+    account_id: REPLACE_WITH_CLOUDFLARE_ACCOUNT_ID
+    bucket: kirikira-media
+    public_url: https://media.kirikira.moe
+  default:
+    config:
+      max_file_size: 5000000 # 5 MB; anything bigger belongs in R2
+  all:
+    filename_template: '{{year}}{{month}}-{{filename}}-{{uuid_short}}'
+    # Photos are converted to WebP and capped at 2400px in the browser before upload.
+    transformations:
+      raster_image: { format: webp, quality: 85, width: 2400, height: 2400 }
 
 collections:
   - name: posts
@@ -28,8 +47,10 @@ collections:
     extension: md
     format: frontmatter
     create: true
-    # New posts get an editable slug (English, e.g. "my-new-post"); it becomes /post/<slug>/.
-    slug: '{{fields._slug}}'
+    # Type an English slug (e.g. "my-new-post") when creating a post; it becomes
+    # /post/<slug>/ and is locked afterwards so published URLs never change.
+    slug:
+      editable: [create]
     identifier_field: title
     summary: '{{title}} ({{date | date("YYYY-MM-DD")}}){{draft | ternary(" [草稿]", "")}}'
     sortable_fields:
@@ -60,7 +81,12 @@ collections:
           - { name: author, label: 歌手, widget: string, required: false }
           - { name: url, label: 音频 URL, widget: string }
           - { name: pic, label: 封面 URL, widget: string, required: false }
-      - { name: body, label: 正文, widget: markdown }
+      - name: body
+        label: 正文
+        widget: markdown
+        hint: >-
+          图片：直接粘贴/拖进来。视频、B站/YouTube/网易云：用工具栏的「视频」「嵌入」按钮
+          （也可以手写：视频写成 ![说明](xxx.mp4)，嵌入就是单独一行贴链接）。
       # Comment thread id. Generated once; never edit (it links the post to its comments).
       - { name: cid, label: 评论 ID, widget: uuid, read_only: true, required: false }
       - { name: slug, label: 旧站 slug, widget: string, required: false, hint: 迁移文章保留旧 URL 用，新文章留空 }

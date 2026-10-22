@@ -9,6 +9,24 @@ Kiri 的博客。2026 年从 Django（`legacy/`）重构为 **Astro 7 + Cloudfla
 
 迁移步骤见 **[docs/MIGRATION_RUNBOOK.md](docs/MIGRATION_RUNBOOK.md)**，设计与选型见 [docs/MIGRATION_PLAN.md](docs/MIGRATION_PLAN.md)。
 
+## 写文章：图片、视频、嵌入
+
+全部是普通 Markdown，不需要手写 HTML（渲染规则在 `src/lib/markdown/media.mjs`）：
+
+| 想要 | 在 CMS 里 | 对应的 Markdown |
+|---|---|---|
+| 图片 | 直接**粘贴或拖进编辑器**，自动上传（上传前在浏览器里转 WebP、限制 2400px） | `![说明](https://media.kirikira.moe/...webp)` |
+| 带图注的图片 | 同上，再加标题 | `![说明](url "图注")`（单独一行） |
+| 视频 | 工具栏「视频」按钮，选文件上传到 R2 | `![说明](https://media.kirikira.moe/a.mp4)` |
+| 像 GIF 一样循环的短视频 | 「视频」按钮里勾选循环 | `![说明](a.mp4 "loop")` |
+| 音频 | — | `![说明](a.mp3)` |
+| B站 / YouTube / 网易云音乐 | 工具栏「嵌入」按钮，贴链接 | 单独一行放链接：`<https://www.bilibili.com/video/BV...>` |
+
+- 上传位置：照片和所有视频/音频放 **Cloudflare R2**（`media.kirikira.moe`），上传对话框里选 R2；小图也可以放仓库（`public/uploads/`，限 5 MB）。
+- 想在本地写也不用编译：Chrome/Edge 打开 `/admin/` 选「Work with Local Repository」，选中本地仓库目录即可（改完自己 git push）。
+  继续用 VS Code 的话，图床插件改成上传到 R2（S3 兼容接口，endpoint `https://<account_id>.r2.cloudflarestorage.com`），然后照上表写 Markdown。
+- 旧文章里手写的 HTML（`<video>`、`<iframe>` 等）照样能用。
+
 ## 开发
 
 需要 Node ≥ 22.23.4（推荐 24）。

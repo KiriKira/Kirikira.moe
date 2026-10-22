@@ -351,6 +351,56 @@ h6 {
   margin: 1em auto;
 }
 
+.prose video,
+.prose audio {
+  display: block;
+  max-width: 100%;
+  margin: 1em auto;
+}
+
+.prose audio {
+  width: 100%;
+}
+
+.prose figure.media {
+  margin: 1.4em 0;
+  text-align: center;
+}
+
+.prose figure.media > :is(img, video, audio) {
+  margin: 0 auto;
+}
+
+.prose figcaption {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text-faint);
+}
+
+/* Bilibili / YouTube players: responsive 16:9 */
+.prose .embed {
+  position: relative;
+  margin: 1.4em 0;
+  aspect-ratio: 16 / 9;
+  background: var(--surface-muted);
+  box-shadow: var(--shadow-soft);
+}
+
+.prose .embed iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.prose .embed.embed-music {
+  aspect-ratio: auto;
+  height: 86px;
+  box-shadow: none;
+  background: none;
+}
+
 .prose blockquote {
   margin: 1.2em 0;
   padding: 10px 15px 10px 20px;

@@ -141,12 +141,32 @@ Zero Trust → Access → Applications → Add → Self-hosted：
 旧站在 `/sw.js` 注册过缓存首页的 Service Worker。新站的 `public/sw.js` 是「自毁」版本：老访客的浏览器下次检查更新时会清空缓存、注销自己并刷新页面；
 页面里也会主动注销残留的 SW。**不要删除 `public/sw.js`**，至少保留一年。
 
-## 7. CMS（在线写文章）
+## 7. CMS（在线写文章）与媒体存储
+
+### 7.1 登录 CMS
 
 1. GitHub → Settings → Developer settings → Fine-grained token：仅本仓库，权限 Contents: Read and write。
 2. 打开 `https://kirikira.moe/admin/`（受 Access 保护），选择用 token 登录。
-3. 新建文章时填英文 slug（成为 `/post/<slug>/`）；保存即提交到 `main`，Workers Builds 约 1–2 分钟后上线。
+3. 新建文章时填英文 slug（成为 `/post/<slug>/`，保存后锁定不可改）；保存即提交到 `main`，Workers Builds 约 1–2 分钟后上线。
 4. 草稿：勾选「草稿」，线上不会显示，`npm run dev` 里能看到。
+
+### 7.2 R2 媒体桶（图片/视频）
+
+照片和所有视频/音频放 R2，不进 git（Workers 静态资源单文件上限 25 MiB，仓库也会越来越大）。R2 免费额度：10 GB 存储，出站流量免费。
+
+1. Cloudflare → R2 → Create bucket：`kirikira-media`。
+2. 桶 → Settings → Custom Domains → 添加 `media.kirikira.moe`（自动建 DNS 记录并公开读取）。
+3. 桶 → Settings → CORS Policy：
+   ```json
+   [{ "AllowedOrigins": ["https://kirikira.moe"], "AllowedMethods": ["GET", "PUT", "DELETE", "HEAD"],
+      "AllowedHeaders": ["*"], "ExposeHeaders": ["ETag"], "MaxAgeSeconds": 3000 }]
+   ```
+4. R2 → Manage API Tokens → Create：权限 **Object Read & Write**，只限 `kirikira-media` 桶。
+5. 把 **Access Key ID** 和 **Account ID** 填进 `public/admin/config.yml` 的 `media_libraries.cloudflare_r2`（替换 `REPLACE_WITH_…`）并提交。
+   **Secret Access Key 不要写进任何文件**：第一次在 CMS 里用 R2 上传时它会提示输入，只存在你的浏览器里。
+
+（可选）迁移脚本默认把旧文章的图片放进 `public/uploads/legacy/`（进 git，约几十张，问题不大）。想统一放 R2：
+`npx wrangler r2 object put kirikira-media/legacy/<文件名> --file public/uploads/legacy/<文件名> --remote` 逐个上传后，把文章里的 `/uploads/legacy/` 替换成 `https://media.kirikira.moe/legacy/`。
 
 ## 8. 收尾
 

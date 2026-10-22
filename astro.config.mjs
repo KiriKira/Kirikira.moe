@@ -4,6 +4,7 @@ import cloudflare from '@astrojs/cloudflare';
 import sitemap from '@astrojs/sitemap';
 import { satteri } from '@astrojs/markdown-satteri';
 import { externalLinks } from './src/lib/markdown/external-links.mjs';
+import { lazyImages, mediaEmbeds } from './src/lib/markdown/media.mjs';
 
 export default defineConfig({
   site: 'https://kirikira.moe',
@@ -31,7 +32,8 @@ export default defineConfig({
         // pymdownx.tilde on the old site: ~x~ is <sub>, ~~x~~ is <del>.
         subscript: true,
       },
-      hastPlugins: [externalLinks],
+      mdastPlugins: [mediaEmbeds],
+      hastPlugins: [externalLinks, lazyImages],
     }),
     shikiConfig: {
       themes: { light: 'github-light', dark: 'github-dark' },
