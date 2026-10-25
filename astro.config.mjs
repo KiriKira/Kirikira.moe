@@ -18,6 +18,8 @@ export default defineConfig({
     imageService: 'compile',
   }),
   session: false,
+  // Fetch a page in the background when its link is hovered/tapped: near-instant navigation.
+  prefetch: { prefetchAll: true, defaultStrategy: 'hover' },
   integrations: [
     sitemap({
       filter: (page) => !page.includes('/admin/'),

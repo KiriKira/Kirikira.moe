@@ -32,8 +32,10 @@
     "altcha-lib": "^2.7.0",
     "aplayer": "^1.10.1",
     "astro": "^7.4.2",
+    "image-size": "^2.0.4",
     "jose": "^6.2.13",
     "markdown-it": "^15.0.3",
+    "photoswipe": "^5.4.4",
     "satteri": "^0.10.5"
   },
   "devDependencies": {

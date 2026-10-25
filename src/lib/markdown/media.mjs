@@ -1,15 +1,21 @@
 import { defineHastPlugin, defineMdastPlugin } from 'satteri';
+import { probeImage } from './image-size.mjs';
 
 /**
  * Media in plain Markdown, so posts never need hand-written HTML:
  *
- *   ![说明](https://media.kirikira.moe/a.mp4)          -> <video controls>
- *   ![说明](https://media.kirikira.moe/a.mp4 "loop")   -> muted autoplay loop, like a GIF
- *   ![说明](https://media.kirikira.moe/a.mp3)          -> <audio controls>
- *   ![说明](https://media.kirikira.moe/a.webp "标题")  -> <figure> with caption (on its own line)
- *   https://www.bilibili.com/video/BV1xx411c7mD        -> embedded player, when the bare link
- *   https://www.youtube.com/watch?v=dQw4w9WgXcQ           is the only thing in its paragraph
- *   https://music.163.com/#/song?id=123456
+ *   ![说明](a.webp)                 alone on a line -> figure sized by orientation
+ *                                   (landscape 80%, portrait 50%, square 60%), click to zoom
+ *   ![说明](a.webp "图注")          the same, with a caption
+ *   ![a](1.webp)                     several images/videos on consecutive lines (no blank
+ *   ![b](2.webp)                     line between them) -> swipeable gallery
+ *   ![说明](a.mp4)                   <video controls>; "loop" title = muted autoplay loop (GIF-like)
+ *   ![说明](a.mp3)                   <audio controls>
+ *   https://www.bilibili.com/video/BV1xx411c7mD   a bare link alone in its paragraph ->
+ *   https://www.youtube.com/watch?v=dQw4w9WgXcQ   embedded player (also music.163.com songs)
+ *
+ * Image sizes are read at build time (image-size.mjs); the browser side lives in
+ * src/scripts/media.ts (gallery controls, lightbox, sizing of unknown/video media).
  */
 
 const VIDEO_RE = /\.(mp4|webm|m4v|mov|ogv)(\?.*)?$/i;
@@ -72,44 +78,119 @@ export function embedFor(rawUrl) {
   return null;
 }
 
-function mediaHtml(url, alt, title) {
-  const caption = title && title !== 'loop' ? `<figcaption>${esc(title)}</figcaption>` : '';
-  if (VIDEO_RE.test(url)) {
-    const attrs =
-      title === 'loop' ? 'autoplay muted loop playsinline' : 'controls preload="metadata" playsinline';
-    return `<video ${attrs} src="${esc(url)}"${alt ? ` aria-label="${esc(alt)}"` : ''}></video>${caption}`;
-  }
-  if (AUDIO_RE.test(url)) {
-    return `<audio controls preload="metadata" src="${esc(url)}"${alt ? ` aria-label="${esc(alt)}"` : ''}></audio>${caption}`;
-  }
-  return null;
+/** landscape / portrait / square, the classes the CSS sizes figures by. */
+export function orientation(width, height) {
+  const r = width / height;
+  return r >= 1.15 ? 'landscape' : r <= 0.87 ? 'portrait' : 'square';
 }
+
+const kindOf = (url) => (VIDEO_RE.test(url) ? 'video' : AUDIO_RE.test(url) ? 'audio' : 'image');
+
+function captionHtml(title) {
+  return title && title !== 'loop' ? `<figcaption>${esc(title)}</figcaption>` : '';
+}
+
+function videoTag(url, alt, title) {
+  const attrs = title === 'loop' ? 'autoplay muted loop playsinline' : 'controls preload="metadata" playsinline';
+  return `<video ${attrs} src="${esc(url)}"${alt ? ` aria-label="${esc(alt)}"` : ''}></video>`;
+}
+
+function audioTag(url, alt) {
+  return `<audio controls preload="metadata" src="${esc(url)}"${alt ? ` aria-label="${esc(alt)}"` : ''}></audio>`;
+}
+
+function imgTag(url, alt, size) {
+  const dims = size ? ` width="${size.width}" height="${size.height}"` : '';
+  return `<img src="${esc(url)}" alt="${esc(alt ?? '')}"${dims} loading="lazy" decoding="async">`;
+}
+
+/** One image/video/audio alone in its paragraph. */
+async function figureHtml(node) {
+  const kind = kindOf(node.url);
+  const caption = captionHtml(node.title);
+  if (kind === 'audio') return `<figure class="media media-audio">${audioTag(node.url, node.alt)}${caption}</figure>`;
+  if (kind === 'video') {
+    // Orientation of videos is only known once metadata loads (src/scripts/media.ts).
+    return `<figure class="media media-video is-unknown">${videoTag(node.url, node.alt, node.title)}${caption}</figure>`;
+  }
+  const size = await probeImage(node.url);
+  const cls = size ? `is-${orientation(size.width, size.height)}` : 'is-unknown';
+  const style = size ? ` style="--w:${size.width}px;--ar:${+(size.width / size.height).toFixed(4)}"` : '';
+  return `<figure class="media media-image ${cls}"${style}>${imgTag(node.url, node.alt, size)}${caption}</figure>`;
+}
+
+/** Two or more images/videos on consecutive lines. */
+async function galleryHtml(images) {
+  const ratios = [];
+  const items = await Promise.all(
+    images.map(async (node) => {
+      const caption = captionHtml(node.title);
+      if (kindOf(node.url) === 'video') {
+        ratios.push(16 / 9);
+        return `<figure class="gallery-item gallery-video">${videoTag(node.url, node.alt, node.title)}${caption}</figure>`;
+      }
+      const size = await probeImage(node.url);
+      if (size) ratios.push(size.width / size.height);
+      const style = size ? ` style="--ar:${size.width}/${size.height}"` : '';
+      return `<figure class="gallery-item"${style}>${imgTag(node.url, node.alt, size)}${caption}</figure>`;
+    }),
+  );
+  // Strip height: the widest item (capped at 16:9; panoramas letterbox) fills the width,
+  // so a landscape photo on a phone isn't shrunk into a grey band.
+  const fit = Math.min(Math.max(...ratios, 4 / 3), 16 / 9);
+  return (
+    `<div class="gallery" role="region" aria-roledescription="carousel" aria-label="图集，共 ${images.length} 项" style="--fit-ar:${+fit.toFixed(4)}">` +
+    `<div class="gallery-track" tabindex="0">${items.join('')}</div></div>`
+  );
+}
+
+/** An image inside running text: small ones (icons, emoji) stay inline, big ones break out. */
+async function inlineImage(node) {
+  const size = await probeImage(node.url);
+  const small = size && size.height <= 64;
+  const cls = small ? 'img-inline' : 'img-block';
+  const dims = size ? ` width="${size.width}" height="${size.height}"` : '';
+  return `<img class="${cls}" src="${esc(node.url)}" alt="${esc(node.alt ?? '')}"${dims} loading="lazy" decoding="async">`;
+}
+
+const isBlank = (n) => n.type === 'break' || (n.type === 'text' && n.value.trim() === '');
 
 export const mediaEmbeds = defineMdastPlugin({
   name: 'kirikira-media-embeds',
 
-  paragraph(node) {
-    const children = node.children ?? [];
-    if (children.length !== 1) return;
-    const only = children[0];
+  async paragraph(node) {
+    const children = (node.children ?? []).filter((n) => !isBlank(n));
+    if (!children.length) return;
 
-    // A media file or captioned image alone in its paragraph -> <figure>
-    if (only.type === 'image') {
-      const media = mediaHtml(only.url, only.alt, only.title);
-      if (media) return { type: 'html', value: `<figure class="media">${media}</figure>` };
-      if (only.title) {
-        return {
-          type: 'html',
-          value:
-            `<figure class="media"><img src="${esc(only.url)}" alt="${esc(only.alt ?? '')}" loading="lazy" decoding="async">` +
-            `<figcaption>${esc(only.title)}</figcaption></figure>`,
-        };
+    // Only images (each on its own line) -> figure or gallery
+    if (children.every((n) => n.type === 'image')) {
+      if (children.length === 1) return { type: 'html', value: await figureHtml(children[0]) };
+      if (children.some((n) => kindOf(n.url) === 'audio')) {
+        const figures = await Promise.all(children.map(figureHtml));
+        return { type: 'html', value: figures.join('\n') };
       }
-      return;
+      return { type: 'html', value: await galleryHtml(children) };
+    }
+
+    // Images/videos mixed into running text: swap just those nodes
+    if (children.some((n) => n.type === 'image')) {
+      return {
+        type: 'paragraph',
+        children: await Promise.all(
+          node.children.map(async (n) => {
+            if (n.type !== 'image') return n;
+            const kind = kindOf(n.url);
+            if (kind === 'video') return { type: 'html', value: videoTag(n.url, n.alt, null) };
+            if (kind === 'audio') return { type: 'html', value: audioTag(n.url, n.alt) };
+            return { type: 'html', value: await inlineImage(n) };
+          }),
+        ),
+      };
     }
 
     // A bare link alone in its paragraph -> embedded player
-    if (only.type === 'link') {
+    if (children.length === 1 && children[0].type === 'link') {
+      const only = children[0];
       const text = only.children?.length === 1 && only.children[0].type === 'text' ? only.children[0].value : null;
       if (text === null || text.trim() !== only.url) return;
       const embed = embedFor(only.url);
@@ -123,12 +204,6 @@ export const mediaEmbeds = defineMdastPlugin({
           `referrerpolicy="strict-origin-when-cross-origin" sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"></iframe></div>`,
       };
     }
-  },
-
-  // Media files mixed into running text
-  image(node) {
-    const media = mediaHtml(node.url, node.alt, null);
-    if (media) return { type: 'html', value: media };
   },
 });
 

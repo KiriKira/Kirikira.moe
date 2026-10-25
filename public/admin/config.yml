@@ -85,8 +85,8 @@ collections:
         label: 正文
         widget: markdown
         hint: >-
-          图片：直接粘贴/拖进来。视频、B站/YouTube/网易云：用工具栏的「视频」「嵌入」按钮
-          （也可以手写：视频写成 ![说明](xxx.mp4)，嵌入就是单独一行贴链接）。
+          图片：直接粘贴/拖进来，单独一行会按横竖自动排版、可点击放大；多张图片相邻行不空行 = 左右滑动的图集。
+          视频、B站/YouTube/网易云：用工具栏的「视频」「嵌入」按钮（也可手写：视频写成 ![说明](xxx.mp4)，嵌入就是单独一行贴链接）。
       # Comment thread id. Generated once; never edit (it links the post to its comments).
       - { name: cid, label: 评论 ID, widget: uuid, read_only: true, required: false }
       - { name: slug, label: 旧站 slug, widget: string, required: false, hint: 迁移文章保留旧 URL 用，新文章留空 }

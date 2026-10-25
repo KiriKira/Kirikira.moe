@@ -37,6 +37,7 @@
   --gutter: clamp(16px, 3vw, 30px);
 }
 
+/* Dark theme: follows the OS unless the header toggle picked one (data-theme). */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     color-scheme: dark;
@@ -56,6 +57,25 @@
     --shadow-1: 0 2px 6px rgba(0, 0, 0, 0.5);
     --shadow-soft: 0 2px 6px rgba(0, 0, 0, 0.35);
   }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #15191c;
+  --surface: #1e2428;
+  --surface-muted: #262d32;
+  --text: #dfe3e6;
+  --text-muted: #a7b0b6;
+  --text-faint: #7c878e;
+  --heading: #eef1f3;
+  --border: rgba(255, 255, 255, 0.08);
+  --slate: #546e7a;
+  --slate-strong: #2c3a41;
+  --footer-bg: #101315;
+  --footer-text: #7c8b93;
+  --code-bg: #161b1f;
+  --shadow-1: 0 2px 6px rgba(0, 0, 0, 0.5);
+  --shadow-soft: 0 2px 6px rgba(0, 0, 0, 0.35);
 }
 
 *,
@@ -136,13 +156,126 @@ h6 {
   height: 100%;
   object-fit: cover;
   object-position: center 30%;
-  /* Gentle parallax replacing jquery.stellar; disabled for reduced motion below. */
-  transform: translateY(calc(var(--scroll, 0) * 0.45px)) scale(1.15);
-  will-change: transform;
+  transform: scale(1.15);
+}
+
+/* Parallax (was jquery.stellar): driven by page scroll, no JavaScript. */
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .banner img {
+      animation: banner-parallax linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 400px;
+    }
+  }
+}
+
+@keyframes banner-parallax {
+  to {
+    transform: translateY(180px) scale(1.15);
+  }
 }
 
 .identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
   padding: 18px 0 20px;
+}
+
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  text-transform: uppercase;
+}
+
+.site-nav a {
+  padding: 8px 12px;
+  color: var(--text-faint);
+  text-decoration: none;
+  transition: color 0.3s, box-shadow 0.3s;
+}
+
+.site-nav a:hover {
+  color: var(--heading);
+  box-shadow: var(--shadow-hover);
+}
+
+.site-nav a[aria-current='page'] {
+  color: #fff;
+  background: var(--accent);
+}
+
+.theme-toggle {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin-left: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: var(--text-faint);
+  background: none;
+  cursor: pointer;
+}
+
+.theme-toggle:hover {
+  color: var(--heading);
+  background: var(--surface-muted);
+}
+
+.theme-toggle svg {
+  width: 20px;
+  height: 20px;
+  display: none;
+}
+
+.theme-toggle:not([data-mode]) .icon-auto,
+.theme-toggle[data-mode='auto'] .icon-auto,
+.theme-toggle[data-mode='light'] .icon-light,
+.theme-toggle[data-mode='dark'] .icon-dark {
+  display: block;
+}
+
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -40px;
+  z-index: 10;
+  padding: 6px 12px;
+  background: var(--accent);
+  color: #fff;
+}
+
+.skip-link:focus {
+  top: 8px;
+}
+
+.to-top {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--slate);
+  box-shadow: var(--shadow-1);
+  text-decoration: none;
+  font-size: 20px;
+}
+
+.to-top[hidden] {
+  display: none;
 }
 
 .identity a {
@@ -348,7 +481,22 @@ h6 {
 
 .prose img {
   display: block;
+  max-width: 100%;
+  height: auto;
   margin: 1em auto;
+}
+
+/* Images inside running text: icons/emoji stay in the line, photos break out. */
+.prose img.img-inline {
+  display: inline;
+  max-height: 1.6em;
+  width: auto;
+  margin: 0 0.15em;
+  vertical-align: -0.35em;
+}
+
+.prose img.img-block {
+  cursor: zoom-in;
 }
 
 .prose video,
@@ -362,19 +510,207 @@ h6 {
   width: 100%;
 }
 
+/*
+ * Standalone images/videos: sized by orientation (classes set at build time from
+ * the real image size, or in the browser for videos). Never wider than the file's
+ * own width (--w) and never taller than 80% of the viewport (via --ar = w/h).
+ */
 .prose figure.media {
-  margin: 1.4em 0;
+  --size: 80%;
+  margin: 1.6em auto;
   text-align: center;
 }
 
-.prose figure.media > :is(img, video, audio) {
+.prose figure.is-landscape { --size: 80%; }
+.prose figure.is-portrait { --size: 50%; }
+.prose figure.is-square { --size: 60%; }
+
+@media (max-width: 640px) {
+  .prose figure.is-landscape,
+  .prose figure.is-unknown { --size: 100%; }
+  .prose figure.is-portrait { --size: 66%; }
+  .prose figure.is-square { --size: 76%; }
+}
+
+.prose figure.media > :is(img, video) {
+  display: block;
   margin: 0 auto;
+  width: min(var(--size), var(--w, 100%), 80vh * var(--ar, 1.7778));
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-soft);
+}
+
+.prose figure.media-image img,
+.prose .gallery-item img {
+  cursor: zoom-in;
 }
 
 .prose figcaption {
-  margin-top: 6px;
+  margin-top: 8px;
   font-size: 13px;
+  line-height: 1.5;
   color: var(--text-faint);
+}
+
+/* Galleries: consecutive images become a swipeable strip (scroll-snap, works without JS). */
+.prose .gallery {
+  position: relative;
+  margin: 1.8em 0;
+  container-type: inline-size;
+}
+
+.prose .gallery-track {
+  /* Height that lets the widest item (--fit-ar, set at build time) fill the width. */
+  --gh: clamp(180px, 100cqw / var(--fit-ar, 1.3333), 440px);
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  border-radius: var(--radius);
+}
+
+.prose .gallery-track::-webkit-scrollbar {
+  display: none;
+}
+
+.prose .gallery-track:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.prose .gallery-item {
+  position: relative;
+  flex: none;
+  margin: 0;
+  height: var(--gh);
+  aspect-ratio: var(--ar, 4 / 3);
+  max-width: 100%;
+  scroll-snap-align: start;
+  background: var(--surface-muted);
+  overflow: hidden;
+}
+
+.prose .gallery-video {
+  aspect-ratio: 16 / 9;
+}
+
+.prose .gallery-item > :is(img, video) {
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  object-fit: contain;
+  max-width: none;
+}
+
+.prose .gallery-item figcaption {
+  position: absolute;
+  inset: auto 0 0;
+  margin: 0;
+  padding: 18px 10px 6px;
+  color: #fff;
+  font-size: 12px;
+  text-align: left;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.55));
+  pointer-events: none;
+}
+
+.prose .gallery-btn {
+  position: absolute;
+  /* Centre on the strip, not on strip + counter row below it. */
+  top: calc((100% - 32px) / 2);
+  translate: 0 -50%;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  font-size: 26px;
+  line-height: 1;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s, background-color 0.2s;
+}
+
+.prose .gallery-prev { left: 8px; }
+.prose .gallery-next { right: 8px; }
+
+.prose .gallery:is(:hover, :focus-within) .gallery-btn:not(:disabled) {
+  opacity: 1;
+}
+
+.prose .gallery-btn:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.prose .gallery-btn:disabled {
+  pointer-events: none;
+}
+
+/* Touch screens swipe; arrows would only cover the picture. */
+@media (hover: none) {
+  .prose .gallery-btn {
+    display: none;
+  }
+}
+
+.prose .gallery-meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.prose .gallery-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.prose .gallery-dot {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--text-faint);
+  opacity: 0.4;
+  cursor: pointer;
+  transition: opacity 0.2s, width 0.2s;
+}
+
+.prose .gallery-dot[aria-current='true'] {
+  width: 18px;
+  border-radius: 4px;
+  opacity: 1;
+  background: var(--accent);
+}
+
+/* Lightbox caption (PhotoSwipe UI element registered in src/scripts/media.ts) */
+.pswp__caption {
+  position: absolute;
+  left: 50%;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  translate: -50% 0;
+  max-width: min(90vw, 720px);
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.5);
+  text-align: center;
 }
 
 /* Bilibili / YouTube players: responsive 16:9 */
@@ -443,6 +779,12 @@ h6 {
     color: var(--shiki-dark) !important;
     background-color: var(--shiki-dark-bg) !important;
   }
+}
+
+:root[data-theme='dark'] .prose pre.astro-code,
+:root[data-theme='dark'] .prose pre.astro-code span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
 }
 
 .prose table {
@@ -630,9 +972,101 @@ h6 {
   font-weight: 700;
 }
 
+/* ---------- phones & tablets ---------- */
+
+@media (max-width: 992px) {
+  /* The sidebar sits below the posts here: make it compact instead of a long column. */
+  .sidebar {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+
+  .love-kiri {
+    display: flex;
+    align-items: center;
+  }
+
+  .love-kiri video {
+    width: 88px;
+    flex: none;
+  }
+
+  .widget ul.chips-on-mobile {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 12px;
+  }
+
+  .widget ul.chips-on-mobile li a {
+    padding: 6px 12px;
+    background: var(--surface-muted);
+    border-radius: 999px;
+  }
+
+  .widget ul.chips-on-mobile .count {
+    margin-left: 4px;
+  }
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 16px 0 28px;
+  }
+
+  .card {
+    padding: 22px 18px 28px;
+  }
+
+  .post-list {
+    gap: 14px;
+  }
+
+  .identity {
+    padding: 14px 0 12px;
+  }
+
+  .site-nav {
+    width: 100%;
+  }
+
+  .site-nav a:first-child {
+    margin-left: -12px;
+  }
+
+  .site-nav a[aria-current='page']:first-child {
+    margin-left: 0;
+  }
+
+  .banner {
+    height: 120px;
+  }
+
+  /* iOS zooms the page when a focused field is under 16px. */
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+
+  .prose pre {
+    margin-inline: -18px;
+    border-radius: 0;
+  }
+}
+
+/* Smooth cross-page navigation (View Transitions API, where supported). */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.2s;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .banner img {
-    transform: none;
+  @view-transition {
+    navigation: none;
   }
   .shake:hover {
     animation: none;

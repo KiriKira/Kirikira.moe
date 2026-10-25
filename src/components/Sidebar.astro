@@ -8,13 +8,13 @@ const categories = [...groupBy(posts, (p) => [p.data.category])].sort((a, b) => 
 
 <aside class="sidebar">
   <a class="widget love-kiri shake" href={SITE.loveKiriHref}>
-    <video src="/img/kiri.mp4" poster="/img/kiri.jpg" muted loop autoplay playsinline preload="metadata"></video>
+    <video src="/img/kiri.mp4" poster="/img/kiri.jpg" width="640" height="640" muted loop playsinline preload="none"></video>
     <span>Love Kiri!</span>
   </a>
 
   <section class="widget">
     <h2 class="widget-title">分类</h2>
-    <ul>
+    <ul class="chips-on-mobile">
       {
         categories.map(([name, list]) => (
           <li>
@@ -30,7 +30,7 @@ const categories = [...groupBy(posts, (p) => [p.data.category])].sort((a, b) => 
 
   <section class="widget">
     <h2 class="widget-title">功能</h2>
-    <ul>
+    <ul class="chips-on-mobile">
       {
         SIDEBAR_LINKS.map((l) => (
           <li>
@@ -43,7 +43,7 @@ const categories = [...groupBy(posts, (p) => [p.data.category])].sort((a, b) => 
 
   <section class="widget">
     <h2 class="widget-title">友情链接</h2>
-    <ul>
+    <ul class="chips-on-mobile">
       {
         FRIENDS.map((f) => (
           <li>
@@ -56,3 +56,16 @@ const categories = [...groupBy(posts, (p) => [p.data.category])].sort((a, b) => 
     </ul>
   </section>
 </aside>
+
+<script>
+  // Play the sidebar clip only while it's on screen, and not at all for people who
+  // asked for less motion or less data (they get the poster image).
+  const video = document.querySelector<HTMLVideoElement>('.love-kiri video');
+  const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
+  if (video && !saveData && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) video.play().catch(() => {});
+      else video.pause();
+    }).observe(video);
+  }
+</script>

@@ -38,6 +38,11 @@ const { title, excerpt, date, music } = post.data;
   <Comments threadId={commentThreadId(post)} />
 </Base>
 
+<script>
+  import { initMedia } from '../../scripts/media';
+  initMedia();
+</script>
+
 <style>
   .post-nav {
     display: flex;
