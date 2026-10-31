@@ -52,7 +52,13 @@ collections:
     slug:
       editable: [create]
     identifier_field: title
-    summary: '{{title}} ({{date | date("YYYY-MM-DD")}}){{draft | ternary(" [草稿]", "")}}'
+    summary: '{{title}}'
+    # Table view columns (large screens): summary = title, plus date / category / draft.
+    table_columns:
+      - _summary
+      - date
+      - category
+      - draft
     sortable_fields:
       fields: [date, title, category]
       default: { field: date, direction: descending }
