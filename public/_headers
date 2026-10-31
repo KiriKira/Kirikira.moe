@@ -15,3 +15,5 @@
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
+  # Preview only: keep the workers.dev preview out of search engines.
+  X-Robots-Tag: noindex, nofollow

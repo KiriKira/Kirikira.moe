@@ -1,5 +1,5 @@
+# Preview build only: nothing here should be indexed.
 User-agent: *
-Disallow: /admin/
-Disallow: /api/
+Disallow: /
 
 Sitemap: https://kirikira.moe/sitemap-index.xml
