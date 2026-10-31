@@ -68,7 +68,7 @@ collections:
     fields:
       - { name: title, label: 标题, widget: string }
       - { name: date, label: 发布时间, widget: datetime }
-      - { name: updated, label: 更新时间, widget: datetime, required: false }
+      - { name: updated, label: 更新时间, widget: datetime, required: false, auto_now: true, hint: 保存时自动写入当前时间，不用手填 }
       - name: category
         label: 分类
         widget: string
