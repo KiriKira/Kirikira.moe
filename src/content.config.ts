@@ -10,7 +10,8 @@ const posts = defineCollection({
     /** URL slug. Migrated posts keep their old numeric id so /post/<id>/ links still work. */
     slug: z.string().optional(),
     date: z.coerce.date(),
-    updated: z.coerce.date().optional(),
+    /** The CMS writes an empty string when the 更新时间 field is left blank. */
+    updated: z.preprocess((v) => (v === '' || v === null ? undefined : v), z.coerce.date().optional()),
     category: z.string().default('未分类'),
     tags: z.array(z.string()).default([]),
     excerpt: z.string().optional(),
