@@ -52,6 +52,45 @@ function enhanceGallery(gallery: HTMLElement) {
   const items = [...track.querySelectorAll<HTMLElement>('.gallery-item')];
   if (items.length < 2) return;
 
+  // Images the build couldn't measure (host unreachable from CI) have no --ar and the
+  // gallery falls back to 4:3, which letterboxes them. Measure here once they load and
+  // let the strip height follow the widest item, exactly like the build-time rule.
+  const arOf = (value: string) => {
+    if (!value) return 0;
+    if (value.includes('/')) {
+      const [a, b] = value.split('/').map(Number);
+      return a && b ? a / b : 0;
+    }
+    const n = Number.parseFloat(value);
+    return Number.isFinite(n) ? n : 0;
+  };
+  const refit = () => {
+    const ratios = items
+      .map((item) => {
+        const known = arOf(item.style.getPropertyValue('--ar'));
+        if (known) return known;
+        const img = item.querySelector('img');
+        return img?.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 0;
+      })
+      .filter((r) => r > 0);
+    if (!ratios.length) return;
+    const fit = Math.min(Math.max(...ratios, 4 / 3), 16 / 9);
+    gallery.style.setProperty('--fit-ar', fit.toFixed(4));
+  };
+  for (const item of items) {
+    if (arOf(item.style.getPropertyValue('--ar'))) continue;
+    const img = item.querySelector('img');
+    if (!img) continue;
+    const apply = () => {
+      if (!img.naturalWidth || !img.naturalHeight) return;
+      item.style.setProperty('--ar', `${img.naturalWidth} / ${img.naturalHeight}`);
+      refit();
+    };
+    if (img.complete) apply();
+    else img.addEventListener('load', apply, { once: true });
+  }
+  refit();
+
   const prev = button('gallery-btn gallery-prev', '上一张', '‹');
   const next = button('gallery-btn gallery-next', '下一张', '›');
   const meta = document.createElement('div');
