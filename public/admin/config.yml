@@ -1,11 +1,11 @@
 # Sveltia CMS — https://sveltiacms.app/en/docs
 # Open https://kirikira.moe/admin/ , sign in with a GitHub personal access token
 # (fine-grained, this repo only, Contents: read & write). Every save is a commit to
-# `main`; Cloudflare Workers Builds then rebuilds and deploys the site (~1-2 min).
+# `migration-preview` (preview build only — revert to `main` before going live).
 backend:
   name: github
   repo: KiriKira/Kirikira.moe
-  branch: main
+  branch: migration-preview
   commit_messages:
     create: 'post: add “{{slug}}”'
     update: 'post: update “{{slug}}”'
