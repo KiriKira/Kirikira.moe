@@ -13,6 +13,10 @@
     "not_found_handling": "404-page"
   },
   "observability": { "enabled": true },
+  "triggers": {
+    // 03:17 UTC daily: purge old spam (see src/worker.ts).
+    "crons": ["17 3 * * *"]
+  },
   "vars": {
     // Cloudflare Access team domain, e.g. "kiri.cloudflareaccess.com". Leave empty to
     // disable JWT checks in local dev ONLY (production refuses admin requests then).
