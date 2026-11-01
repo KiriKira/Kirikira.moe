@@ -63,13 +63,13 @@ export async function insertComment(db: D1Database, c: NewComment): Promise<numb
     .prepare(
       `INSERT INTO comments
          (post_id, parent_id, name, email, url, body, body_fp, status, spam_score, spam_reasons,
-          ip_hash, user_agent, pow_nonce, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ip_hash, user_agent, pow_nonce, ai_spam, ai_kind, ai_checked_at, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        RETURNING id`,
     )
     .bind(
       c.post_id, c.parent_id, c.name, c.email, c.url, c.body, c.body_fp, c.status, c.spam_score,
-      c.spam_reasons, c.ip_hash, c.user_agent, c.pow_nonce, c.created_at,
+      c.spam_reasons, c.ip_hash, c.user_agent, c.pow_nonce, c.ai_spam, c.ai_kind, c.ai_checked_at, c.created_at,
     )
     .first<{ id: number }>();
   return row!.id;
@@ -159,4 +159,47 @@ export async function purgeOldSpam(db: D1Database, days: number, now = Date.now(
     .bind(minutesAgo(now, days * 24 * 60))
     .run();
   return res.meta.changes ?? 0;
+}
+
+// ---------- AI re-scan of existing comments ----------
+
+export async function listUnscanned(db: D1Database, limit: number): Promise<CommentRow[]> {
+  const { results } = await db
+    .prepare(`SELECT * FROM comments WHERE status = 'published' AND ai_checked_at IS NULL ORDER BY id LIMIT ?`)
+    .bind(limit)
+    .all<CommentRow>();
+  return results;
+}
+
+export async function countUnscanned(db: D1Database): Promise<number> {
+  const row = await db
+    .prepare(`SELECT COUNT(*) AS n FROM comments WHERE status = 'published' AND ai_checked_at IS NULL`)
+    .first<{ n: number }>();
+  return row?.n ?? 0;
+}
+
+export async function saveScan(
+  db: D1Database,
+  id: number,
+  scan: { aiSpam: number | null; aiKind: string | null; spam: boolean; score: number; reasons: string[] },
+  now = new Date().toISOString(),
+): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE comments SET ai_spam = ?, ai_kind = ?, ai_checked_at = ?,
+         status = CASE WHEN ? THEN 'spam' ELSE status END,
+         spam_score = CASE WHEN ? THEN ? ELSE spam_score END,
+         spam_reasons = CASE WHEN ? THEN ? ELSE spam_reasons END
+       WHERE id = ?`,
+    )
+    .bind(scan.aiSpam, scan.aiKind, now, scan.spam ? 1 : 0, scan.spam ? 1 : 0, scan.score, scan.spam ? 1 : 0, JSON.stringify(scan.reasons), id)
+    .run();
+}
+
+export async function countRecentSpam(db: D1Database, days = 7, now = Date.now()): Promise<number> {
+  const row = await db
+    .prepare(`SELECT COUNT(*) AS n FROM comments WHERE status = 'spam' AND created_at >= ?`)
+    .bind(minutesAgo(now, days * 24 * 60))
+    .first<{ n: number }>();
+  return row?.n ?? 0;
 }

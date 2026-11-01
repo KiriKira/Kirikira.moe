@@ -4,17 +4,27 @@ import { adminIdentity } from '../../../lib/access';
 import { isSameOrigin } from '../../../lib/http';
 import { extractHosts } from '../../../lib/comments/spam';
 import * as store from '../../../lib/comments/store';
+import { isAiEnabled } from '../../../lib/comments/ai';
+import { rescanBatch } from '../../../lib/comments/rescan';
+import { getThreads } from '../../../lib/comments/threads';
 import type { SpamRuleKind } from '../../../lib/comments/types';
 
 export const prerender = false;
 
 const RULE_KINDS: SpamRuleKind[] = ['keyword', 'domain', 'regex', 'ip_hash', 'email'];
 
+/** GET: counters for the CMS shortcut bar (/admine/index.html). */
+export const GET: APIRoute = async ({ request }) => {
+  if (!(await adminIdentity(request, env))) return new Response('Forbidden', { status: 403 });
+  const [recentSpam, unscanned] = await Promise.all([store.countRecentSpam(env.DB), store.countUnscanned(env.DB)]);
+  return Response.json({ recentSpam, unscanned }, { headers: { 'cache-control': 'no-store' } });
+};
+
 /**
- * Form-post endpoint behind the admin pages. Every action redirects back to
+ * Form-post endpoint behind the admin pages (/admine/api/comments). Every action redirects back to
  * `redirect` (same-origin paths only) so the admin UI works without JavaScript.
  */
-export const POST: APIRoute = async ({ request, redirect }) => {
+export const POST: APIRoute = async ({ request, redirect, url }) => {
   if (!(await adminIdentity(request, env))) return new Response('Forbidden', { status: 403 });
   if (!isSameOrigin(request)) return new Response('Bad origin', { status: 403 });
 
@@ -24,8 +34,8 @@ export const POST: APIRoute = async ({ request, redirect }) => {
     .getAll('id')
     .map(Number)
     .filter((n) => Number.isSafeInteger(n) && n > 0);
-  const back = String(form.get('redirect') ?? '/admin/comments');
-  const target = back.startsWith('/admin/') ? back : '/admin/comments';
+  const back = String(form.get('redirect') ?? '/admine/comments');
+  const target = back.startsWith('/admine/') ? back : '/admine/comments';
 
   switch (action) {
     case 'delete':
@@ -78,6 +88,15 @@ export const POST: APIRoute = async ({ request, redirect }) => {
     case 'delete-rule':
       for (const id of ids) await store.deleteRule(env.DB, id);
       break;
+    case 'ai-scan': {
+      // One batch per request; the comments page loops with fetch() and shows progress.
+      if (!isAiEnabled(env)) return Response.json({ checked: 0, flagged: 0, remaining: 0, error: 'ai-disabled' });
+      const threads = await getThreads(env, url).catch(() => ({}) as Record<string, { title: string }>);
+      const titles = Object.fromEntries(Object.entries(threads).map(([id, t]) => [id, t.title]));
+      const result = await rescanBatch(env.DB, env.AI!, titles);
+      if ((request.headers.get('accept') ?? '').includes('application/json')) return Response.json(result);
+      break;
+    }
     case 'purge-spam':
       await store.purgeOldSpam(env.DB, 0);
       break;

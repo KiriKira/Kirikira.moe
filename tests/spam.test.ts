@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countLinks, extractHosts, fingerprintBody, judgeComment, MIN_FILL_MS, type SpamSignals } from '../src/lib/comments/spam';
+import { countLinks, extractHosts, fingerprintBody, hasHardReason, judgeComment, MIN_FILL_MS, type SpamSignals } from '../src/lib/comments/spam';
 import type { CommentInput, SpamRule } from '../src/lib/comments/types';
 
 const input = (over: Partial<CommentInput> = {}): CommentInput => ({
@@ -117,5 +117,38 @@ describe('helpers', () => {
   it('fingerprints bodies insensitive to case/space/punctuation', () => {
     expect(fingerprintBody('Hello, World!')).toBe(fingerprintBody('hello world'));
     expect(fingerprintBody('你好，世界。')).toBe(fingerprintBody('你好 世界'));
+  });
+});
+
+describe('AI signal (Clef-flash)', () => {
+  const ai = (spam: number, kind: string | null = null) => ({ spam, kind });
+
+  it('marks spam when the model is confident', () => {
+    const v = judgeComment(input(), signals({ ai: ai(0.93, 'ad') }));
+    expect(v.isSpam).toBe(true);
+    expect(v.reasons).toContain('ai:0.93:ad');
+  });
+
+  it('only counts "maybe" together with other signals', () => {
+    expect(judgeComment(input(), signals({ ai: ai(0.7) })).isSpam).toBe(false);
+    const withLink = input({ body: 'Nice post https://shop.example.com' }); // no-cjk-with-link: 60
+    expect(judgeComment(withLink, signals({ ai: ai(0.7) })).isSpam).toBe(true);
+  });
+
+  it('lets a confident "normal" rescue soft heuristics', () => {
+    const body = 'Thanks! See https://github.com/a and https://github.com/b';
+    expect(judgeComment(input({ body }), signals()).isSpam).toBe(true);
+    expect(judgeComment(input({ body }), signals({ ai: ai(0.03, 'normal') })).isSpam).toBe(false);
+  });
+
+  it('never outvotes hard checks or admin rules', () => {
+    expect(judgeComment(input(), signals({ honeypot: 'x', ai: ai(0.01) })).isSpam).toBe(true);
+    const ban = rule({ kind: 'keyword', pattern: '学到了' });
+    expect(judgeComment(input(), signals({ ai: ai(0.01) }), [ban]).isSpam).toBe(true);
+  });
+
+  it('recognises hard reasons', () => {
+    expect(hasHardReason(['links:2', 'pow:missing'])).toBe(true);
+    expect(hasHardReason(['links:2', 'no-cjk-with-link'])).toBe(false);
   });
 });

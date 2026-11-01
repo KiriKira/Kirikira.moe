@@ -1,5 +1,4 @@
 User-agent: *
-Disallow: /admin/
 Disallow: /api/
 
 Sitemap: https://kirikira.moe/sitemap-index.xml

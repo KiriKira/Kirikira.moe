@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Kirikira.moe CMS</title>
+    <!-- Sveltia CMS reads ./config.yml. Pinned to the 0.x line; bump when you want new features. -->
+    <script src="https://unpkg.com/@sveltia/cms@0/dist/sveltia-cms.js"></script>
+    <script>
+      // Editor buttons that write the plain-Markdown media syntax the site understands
+      // (see src/lib/markdown/media.mjs), so posts never need hand-written HTML.
+      CMS.registerEditorComponent({
+        id: 'video',
+        label: '视频',
+        icon: 'movie',
+        fields: [
+          { name: 'src', label: '视频文件（建议上传到 R2）', widget: 'file' },
+          { name: 'caption', label: '说明', widget: 'string', required: false },
+          { name: 'loop', label: '像 GIF 一样静音循环自动播放', widget: 'boolean', default: false },
+        ],
+        pattern: /^!\[([^\]]*)\]\((\S+\.(?:mp4|webm|m4v|mov|ogv))(?: "(loop)")?\)$/m,
+        fromBlock: (m) => ({ caption: m[1], src: m[2], loop: m[3] === 'loop' }),
+        toBlock: ({ src = '', caption = '', loop = false }) => `![${caption}](${src}${loop ? ' "loop"' : ''})`,
+        toPreview: ({ src = '', loop = false }) =>
+          `<video src="${src}" ${loop ? 'autoplay muted loop' : 'controls'} playsinline style="max-width:100%"></video>`,
+      });
+
+      CMS.registerEditorComponent({
+        id: 'embed',
+        label: '嵌入 B站 / YouTube / 网易云',
+        icon: 'smart_display',
+        fields: [{ name: 'url', label: '视频或歌曲页面链接', widget: 'string' }],
+        pattern: /^<?(https?:\/\/(?:www\.|m\.)?(?:bilibili\.com|youtube\.com|youtu\.be|music\.163\.com)\/\S*?)>?$/m,
+        fromBlock: (m) => ({ url: m[1] }),
+        // Angle brackets keep the URL intact when the editor re-serialises Markdown.
+        toBlock: ({ url = '' }) => `<${url}>`,
+        toPreview: ({ url = '' }) => `<p>▶ 嵌入：<a href="${url}">${url}</a></p>`,
+      });
+    </script>
+  </head>
+  <body>
+    <!-- Admin shortcuts over the CMS: same login (everything under /admine is gated by the Worker). -->
+    <nav class="kiri-admin-bar" aria-label="后台">
+      <!-- Buttons, not links: Sveltia's router swallows clicks on same-origin <a> elements. -->
+      <button type="button" data-href="/admine/comments">💬 评论管理 <b class="kiri-badge" hidden></b></button>
+      <button type="button" data-href="/admine/rules">🛡 过滤规则</button>
+      <button type="button" data-href="/" data-new-tab>↗ 网站</button>
+    </nav>
+    <style>
+      .kiri-admin-bar {
+        position: fixed;
+        left: 12px;
+        bottom: 12px;
+        z-index: 2147483647;
+        display: flex;
+        gap: 2px;
+        padding: 4px;
+        border-radius: 999px;
+        background: rgba(55, 71, 79, 0.92);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+        font: 13px/1 system-ui, -apple-system, 'PingFang SC', sans-serif;
+        backdrop-filter: blur(6px);
+      }
+      .kiri-admin-bar button {
+        padding: 7px 12px;
+        border: 0;
+        border-radius: 999px;
+        font: inherit;
+        color: #fff;
+        background: none;
+        white-space: nowrap;
+        cursor: pointer;
+      }
+      .kiri-admin-bar button:hover {
+        background: rgba(255, 255, 255, 0.15);
+      }
+      .kiri-badge {
+        display: inline-block;
+        min-width: 18px;
+        margin-left: 4px;
+        padding: 2px 5px;
+        border-radius: 9px;
+        background: #e53935;
+        font-size: 11px;
+        text-align: center;
+      }
+      .kiri-badge[hidden] {
+        display: none;
+      }
+    </style>
+    <script>
+      document.querySelector('.kiri-admin-bar').addEventListener('click', (event) => {
+        const b = event.target.closest('button[data-href]');
+        if (!b) return;
+        if (b.hasAttribute('data-new-tab')) window.open(b.dataset.href, '_blank', 'noopener');
+        else location.assign(b.dataset.href);
+      });
+
+      // Badge: comments flagged as spam in the last 7 days (worth a quick look for false positives).
+      fetch('/admine/api/comments', { credentials: 'same-origin' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          const badge = document.querySelector('.kiri-badge');
+          if (d && d.recentSpam > 0) {
+            badge.textContent = d.recentSpam > 99 ? '99+' : String(d.recentSpam);
+            badge.title = `最近 7 天有 ${d.recentSpam} 条被判为垃圾`;
+            badge.hidden = false;
+          }
+        })
+        .catch(() => {});
+    </script>
+  </body>
+</html>

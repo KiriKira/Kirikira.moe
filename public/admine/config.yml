@@ -1,5 +1,5 @@
 # Sveltia CMS — https://sveltiacms.app/en/docs
-# Open https://kirikira.moe/admin/ , sign in with a GitHub personal access token
+# Open https://kirikira.moe/admine/ , sign in with a GitHub personal access token
 # (fine-grained, this repo only, Contents: read & write). Every save is a commit to
 # `master`; Cloudflare Workers Builds then rebuilds and deploys the site (~1-2 min).
 backend:
@@ -73,7 +73,7 @@ collections:
         widget: select
         options: ['碎碎念', '无情安利', '流下了没有技术的泪水', 'BABU']
         default: 碎碎念
-        hint: 要加新分类，改 public/admin/config.yml 的 options（或少见情况告诉 Hermes）
+        hint: 要加新分类，改 public/admine/config.yml 的 options（或少见情况告诉 Hermes）
       - { name: tags, label: 标签, widget: list, required: false, default: [] }
       - { name: excerpt, label: 摘要, widget: text, required: false, hint: 首页列表与 RSS 中显示 }
       - { name: draft, label: 草稿, widget: boolean, default: false, hint: 草稿不会出现在线上站点 }

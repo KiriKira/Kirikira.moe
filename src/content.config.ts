@@ -5,7 +5,7 @@ import { z } from 'astro/zod';
 /**
  * The CMS (Sveltia) writes `null` for untouched optional fields and `''` for empty
  * strings, neither of which z.optional() accepts. Normalise both to "unset" so a post
- * saved through /admin/ can never fail the whole build.
+ * saved through /admine/ can never fail the whole build.
  */
 const unset = (v: unknown) => (v === '' || v === null ? undefined : v);
 const optional = <T extends z.ZodTypeAny>(schema: T) => z.preprocess(unset, schema.optional());

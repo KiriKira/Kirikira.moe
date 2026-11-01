@@ -2,7 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import AdminNav from '../../components/AdminNav.astro';
 import { env } from '../../lib/env';
-import { adminIdentity, rememberAdminToken } from '../../lib/access';
+import { adminIdentity } from '../../lib/access';
 import { listRules } from '../../lib/comments/store';
 import { SPAM_THRESHOLD } from '../../lib/comments/spam';
 
@@ -10,7 +10,6 @@ export const prerender = false;
 
 const who = await adminIdentity(Astro.request, env);
 if (!who) return new Response('Forbidden', { status: 403 });
-rememberAdminToken(Astro.cookies, Astro.request, env);
 
 const rules = await listRules(env.DB);
 const KIND_LABEL: Record<string, string> = {
@@ -32,9 +31,9 @@ const KIND_LABEL: Record<string, string> = {
         权重 100 = 直接拦截；较小的权重只在与其它可疑特征叠加时生效。
       </p>
 
-      <form class="admin-form admin-filters" method="post" action="/api/admin/comments">
+      <form class="admin-form admin-filters" method="post" action="/admine/api/comments">
         <input type="hidden" name="action" value="add-rule" />
-        <input type="hidden" name="redirect" value="/admin/rules" />
+        <input type="hidden" name="redirect" value="/admine/rules" />
         <select name="kind" aria-label="类型">
           <option value="keyword">关键词（不区分大小写）</option>
           <option value="domain">域名（含子域名）</option>
@@ -48,9 +47,9 @@ const KIND_LABEL: Record<string, string> = {
         <button type="submit">添加</button>
       </form>
 
-      <form method="post" action="/api/admin/comments">
+      <form method="post" action="/admine/api/comments">
         <input type="hidden" name="action" value="delete-rule" />
-        <input type="hidden" name="redirect" value="/admin/rules" />
+        <input type="hidden" name="redirect" value="/admine/rules" />
         <table class="admin-table">
           <thead>
             <tr><th>类型</th><th>内容</th><th>权重</th><th>备注</th><th></th></tr>
@@ -78,9 +77,9 @@ const KIND_LABEL: Record<string, string> = {
         {rules.length === 0 && <p class="empty">还没有自定义规则。</p>}
       </form>
 
-      <form method="post" action="/api/admin/comments" style="margin-top: 24px">
+      <form method="post" action="/admine/api/comments" style="margin-top: 24px">
         <input type="hidden" name="action" value="purge-spam" />
-        <input type="hidden" name="redirect" value="/admin/rules" />
+        <input type="hidden" name="redirect" value="/admine/rules" />
         <button class="danger" onclick="return confirm('立即永久删除所有垃圾评论？')">立即清空所有垃圾评论</button>
         <span class="muted">（每天也会自动删除 {env.SPAM_RETENTION_DAYS || 30} 天前的垃圾评论）</span>
       </form>

@@ -1,2 +1,4 @@
 # Copy to .dev.vars for `npm run dev` / `wrangler dev`. Never commit .dev.vars.
 COMMENT_SECRET=dev-only-change-me-0123456789abcdef
+# Preview-style admin login for `wrangler dev --local` (open /admine/?token=...). Never set in production.
+ADMIN_TOKEN=local-test-token-123

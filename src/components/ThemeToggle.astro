@@ -3,10 +3,11 @@
 // inline script in Base.astro; "auto" removes data-theme so the OS setting wins.
 ---
 
-<button type="button" class="theme-toggle" aria-label="切换浅色/深色主题" title="主题：跟随系统">
+<button type="button" class="theme-toggle" title="主题：跟随系统">
   <svg class="icon-auto" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18V3Z" fill="currentColor"></path><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"></circle></svg>
   <svg class="icon-light" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="currentColor"></circle><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>
   <svg class="icon-dark" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" fill="currentColor"></path></svg>
+  <span class="theme-label">主题：跟随系统</span>
 </button>
 
 <script>
@@ -28,12 +29,14 @@
     for (const b of document.querySelectorAll<HTMLButtonElement>('.theme-toggle')) {
       b.dataset.mode = mode;
       b.title = `主题：${LABEL[mode]}`;
+      b.querySelector('.theme-label')!.textContent = `主题：${LABEL[mode]}`;
     }
   }
 
   for (const b of document.querySelectorAll<HTMLButtonElement>('.theme-toggle')) {
     b.dataset.mode = current();
     b.title = `主题：${LABEL[current()]}`;
+    b.querySelector('.theme-label')!.textContent = `主题：${LABEL[current()]}`;
     b.addEventListener('click', () => apply(ORDER[(ORDER.indexOf(current()) + 1) % ORDER.length]));
   }
 </script>

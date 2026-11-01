@@ -2,7 +2,7 @@
   Cache-Control: no-cache, no-store, must-revalidate
   Content-Type: application/javascript; charset=utf-8
 
-/admin/*
+/admine/*
   X-Robots-Tag: noindex
   Cache-Control: no-store
 

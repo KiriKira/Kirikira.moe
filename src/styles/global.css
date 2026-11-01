@@ -119,11 +119,6 @@ h6 {
   line-height: 1.35;
 }
 
-.container {
-  width: min(1280px, 100% - 2 * var(--gutter));
-  margin-inline: auto;
-}
-
 .visually-hidden {
   position: absolute !important;
   width: 1px;
@@ -133,106 +128,137 @@ h6 {
   white-space: nowrap;
 }
 
-/* ---------- header ---------- */
+/* ---------- header (measurements taken from the live 2018 site) ---------- */
 
-.site-header {
-  background: var(--surface);
-  box-shadow: var(--shadow-soft);
-  position: relative;
-  z-index: 1;
+/* Materialize's .container: 70% wide on large screens, 85% medium, 90% small. */
+.container {
+  width: 90%;
+  max-width: 1280px;
+  margin-inline: auto;
 }
 
+@media (min-width: 601px) {
+  .container {
+    width: 85%;
+  }
+}
+
+@media (min-width: 993px) {
+  .container {
+    width: 70%;
+  }
+}
+
+.site-header {
+  position: relative;
+  z-index: 1;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.16), 0 2px 10px 0 rgba(0, 0, 0, 0.12);
+}
+
+.identity {
+  padding: 30px 0;
+  text-align: center;
+  border-bottom: 3px double var(--border);
+}
+
+/* The banner lives inside the content column, 150px tall, showing the top of the picture. */
 .banner {
   position: relative;
   height: 150px;
   overflow: hidden;
-  background: #f4b9b2;
+  background: var(--surface);
+}
+
+.banner a {
+  display: block;
+  height: 100%;
 }
 
 .banner img {
   position: absolute;
-  inset: 0;
+  left: 0;
+  top: -8px;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 30%;
-  transform: scale(1.15);
+  height: auto;
+  max-width: none;
 }
 
-/* Parallax (was jquery.stellar): driven by page scroll, no JavaScript. */
+/* Phones: show the whole picture at banner height, centred (as the old site did). */
+@media (max-width: 600px) {
+  .banner img {
+    left: 50%;
+    top: 0;
+    width: auto;
+    height: 100%;
+    translate: -50% 0;
+  }
+}
+
+/* Parallax (was jquery.stellar, ratio 1.8): driven by page scroll, no JavaScript. */
 @supports (animation-timeline: scroll()) {
-  @media (prefers-reduced-motion: no-preference) {
+  @media (prefers-reduced-motion: no-preference) and (min-width: 601px) {
     .banner img {
       animation: banner-parallax linear both;
       animation-timeline: scroll(root);
-      animation-range: 0 400px;
+      animation-range: 0 300px;
     }
   }
 }
 
 @keyframes banner-parallax {
   to {
-    transform: translateY(180px) scale(1.15);
+    transform: translateY(-120px);
   }
 }
 
-.identity {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px 24px;
-  padding: 18px 0 20px;
-}
-
-.site-nav {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-family: var(--font-ui);
-  font-size: 14px;
-  text-transform: uppercase;
-}
-
-.site-nav a {
-  padding: 8px 12px;
-  color: var(--text-faint);
+.identity a.site-title,
+.identity a.site-tagline {
+  display: block;
   text-decoration: none;
-  transition: color 0.3s, box-shadow 0.3s;
 }
 
-.site-nav a:hover {
+.site-title {
+  font-family: var(--font-title);
+  font-size: 24px;
+  line-height: 36px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.site-title:hover {
   color: var(--heading);
-  box-shadow: var(--shadow-hover);
 }
 
-.site-nav a[aria-current='page'] {
-  color: #fff;
-  background: var(--accent);
+.site-tagline {
+  margin-top: 10px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 18px;
+  letter-spacing: 2px;
+  color: var(--text-faint);
+}
+
+.site-tagline:hover {
+  color: var(--text);
 }
 
 .theme-toggle {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  margin-left: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 0;
   border: 0;
-  border-radius: 50%;
-  color: var(--text-faint);
+  font: inherit;
+  color: inherit;
   background: none;
   cursor: pointer;
 }
 
-.theme-toggle:hover {
-  color: var(--heading);
-  background: var(--surface-muted);
-}
-
 .theme-toggle svg {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   display: none;
 }
 
@@ -278,37 +304,6 @@ h6 {
   display: none;
 }
 
-.identity a {
-  display: block;
-  width: fit-content;
-  text-decoration: none;
-}
-
-.site-title {
-  font-family: var(--font-title);
-  font-size: 24px;
-  line-height: 36px;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.site-title:hover {
-  color: var(--heading);
-}
-
-.site-tagline {
-  font-family: var(--font-ui);
-  font-size: 12px;
-  line-height: 18px;
-  margin-top: 6px;
-  letter-spacing: 2px;
-  color: var(--text-faint);
-}
-
-.site-tagline:hover {
-  color: var(--text);
-}
-
 /* csshake-style wobble, only while hovered */
 @keyframes shake {
   0%, 100% { transform: translate(0, 0) rotate(0); }
@@ -325,18 +320,20 @@ h6 {
 /* ---------- layout ---------- */
 
 .page {
-  padding: 30px 0 40px;
+  padding: 80px 0;
 }
 
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 30px;
+  gap: 20px;
 }
 
 @media (min-width: 993px) {
   .layout {
-    grid-template-columns: minmax(0, 3fr) minmax(220px, 1fr);
+    /* Old grid: l9 / l3 columns -> 751px article + 236px sidebar in a 1008px container. */
+    grid-template-columns: minmax(0, 1fr) 23.4%;
+    gap: 21px;
   }
 }
 
@@ -344,8 +341,8 @@ h6 {
 
 .card {
   background: var(--surface);
-  box-shadow: var(--shadow-1);
-  padding: 30px var(--gutter) 40px;
+  box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.16), 0 2px 10px 0 rgba(0, 0, 0, 0.12);
+  padding: 30px 30px 50px;
 }
 
 .post-list {
@@ -355,7 +352,11 @@ h6 {
 
 .post-title {
   margin: 0 0 10px;
-  font-size: clamp(22px, 3vw, 28px);
+  font-family: var(--font-ui);
+  font-size: 34px;
+  line-height: 42px;
+  font-weight: 400;
+  color: var(--heading);
 }
 
 .post-title a {
@@ -369,18 +370,22 @@ h6 {
 }
 
 .meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 10px;
   font-size: 12px;
   line-height: 16px;
   text-transform: uppercase;
-  color: var(--text-faint);
 }
 
 .meta time {
-  margin-right: 4px;
+  display: block;
+  margin: 15px 0 15px 5px;
+  color: #989898;
+}
+
+.meta-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 5px 0;
 }
 
 .chip {
@@ -388,7 +393,7 @@ h6 {
   padding: 5px 12px;
   text-decoration: none;
   background: var(--surface-muted);
-  color: var(--text-muted);
+  color: #989898;
   transition: box-shadow 0.3s ease-out, background-color 0.3s ease-out;
 }
 
@@ -411,18 +416,23 @@ h6 {
 }
 
 .excerpt {
-  margin: 20px 0 0;
+  margin: 20px 0;
+  font-weight: 300;
+  font-size: 15px;
+  line-height: 28px;
   color: var(--text);
 }
 
 .more-link {
   display: inline-block;
-  margin-top: 16px;
+  margin-top: 10px;
   padding: 5px 28px;
   background: var(--slate);
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.8);
   font-family: var(--font-ui);
   font-size: 13px;
+  font-weight: 300;
+  line-height: 28px;
   text-transform: uppercase;
   text-decoration: none;
   transition: all 0.3s ease-out;
@@ -432,6 +442,19 @@ h6 {
   background: var(--slate-strong);
   color: #fff;
   box-shadow: var(--shadow-hover);
+}
+
+.more-link .short {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .more-link .long {
+    display: none;
+  }
+  .more-link .short {
+    display: inline;
+  }
 }
 
 .empty {
@@ -827,13 +850,13 @@ h6 {
 
 .sidebar {
   display: grid;
-  gap: 24px;
+  gap: 20px;
   align-content: start;
 }
 
 .widget {
   background: var(--surface);
-  box-shadow: var(--shadow-soft);
+  box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.16), 0 2px 10px 0 rgba(0, 0, 0, 0.12);
 }
 
 .widget-title {
@@ -841,39 +864,46 @@ h6 {
   padding: 10px 20px;
   background: var(--slate-strong);
   color: #fff;
-  font-family: var(--font-ui);
   font-size: 14px;
   font-weight: 400;
+  line-height: 20px;
   letter-spacing: 1px;
-  text-transform: uppercase;
 }
 
 .widget ul {
   list-style: none;
   margin: 0;
-  padding: 8px 0;
+  padding: 0 20px;
 }
 
-.widget li a {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 6px 20px;
-  color: var(--text-muted);
+.widget li {
+  padding: 12px 0 12px 3px;
+  line-height: 24px;
+}
+
+.widget li + li {
+  border-top: 1px solid var(--border);
+}
+
+.widget ul.dotted li::before {
+  content: '·';
+  margin: 0 12px 0 5px;
+  color: #b5b5b5;
+}
+
+.widget li a,
+.widget li .theme-toggle {
+  color: #52565a;
   text-decoration: none;
   font-size: 14px;
 }
 
-.widget li a:hover {
+.widget li a:hover,
+.widget li .theme-toggle:hover {
   color: var(--heading);
-  background: var(--surface-muted);
 }
 
-.widget .count {
-  color: var(--text-faint);
-  font-size: 12px;
-}
-
+/* "Love Kiri!": 150px video strip, then one bold list row (old #categories-1 widget). */
 .love-kiri {
   display: block;
   text-decoration: none;
@@ -882,48 +912,69 @@ h6 {
 .love-kiri video {
   display: block;
   width: 100%;
-  aspect-ratio: 1;
-  object-fit: cover;
+  height: 150px;
+  object-fit: contain;
+  background: var(--surface);
 }
 
-.love-kiri span {
-  display: block;
-  padding: 10px 20px;
+.love-kiri ul li {
+  border-top: 1px solid var(--border);
+}
+
+.love-kiri ul li span {
   font-weight: 700;
-  color: var(--text-muted);
+  color: #52565a;
 }
 
-/* ---------- pagination ---------- */
+/* ---------- pagination (green squares on a rule, old mythemes-nav-inline) ---------- */
 
 .pagination {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 6px;
-  margin-top: 30px;
+  gap: 7px;
+  margin: 25px 0 0;
   padding: 0;
   list-style: none;
+}
+
+.pagination::before {
+  content: '';
+  position: absolute;
+  inset: 50% 0 auto;
+  border-top: 1px solid var(--border);
+  z-index: -1;
 }
 
 .pagination a,
 .pagination span {
   display: inline-block;
-  min-width: 36px;
-  padding: 6px 12px;
+  min-width: 40px;
+  padding: 11px 14px;
   text-align: center;
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 24px;
   text-decoration: none;
-  background: var(--surface);
-  color: var(--text-muted);
-  box-shadow: var(--shadow-soft);
+  text-transform: uppercase;
+}
+
+.pagination a {
+  background: var(--chip);
+  color: #fff;
+  box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.16);
 }
 
 .pagination a:hover {
+  background: var(--chip-hover);
   box-shadow: var(--shadow-hover);
 }
 
 .pagination .current {
-  background: var(--accent);
-  color: #fff;
+  color: var(--heading);
+  background: var(--bg);
 }
 
 /* ---------- archives ---------- */
@@ -956,38 +1007,38 @@ h6 {
 /* ---------- footer ---------- */
 
 .site-footer {
-  background: var(--footer-bg);
-  color: var(--footer-text);
+  background: #37474f;
+  color: #90a4ae;
   text-align: center;
   font-size: 13px;
-  padding: 20px 0;
+  padding: 0;
 }
 
 .site-footer p {
-  margin: 4px 0;
+  margin: 0;
+  padding: 7px 0;
+  line-height: 17px;
 }
 
 .site-footer a {
-  color: inherit;
+  color: #f7faff;
+  font-family: var(--font-ui);
+  font-size: 14px;
   font-weight: 700;
+  text-decoration: none;
+}
+
+.site-footer a:hover {
+  color: #fff;
+  text-decoration: underline;
 }
 
 /* ---------- phones & tablets ---------- */
 
 @media (max-width: 992px) {
-  /* The sidebar sits below the posts here: make it compact instead of a long column. */
+  /* The sidebar sits below the posts here: compact chips instead of a long column. */
   .sidebar {
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  }
-
-  .love-kiri {
-    display: flex;
-    align-items: center;
-  }
-
-  .love-kiri video {
-    width: 88px;
-    flex: none;
   }
 
   .widget ul.chips-on-mobile {
@@ -997,48 +1048,27 @@ h6 {
     padding: 12px;
   }
 
-  .widget ul.chips-on-mobile li a {
+  .widget ul.chips-on-mobile li {
+    padding: 0;
+    border: 0;
+  }
+
+  .widget ul.chips-on-mobile li::before {
+    content: none;
+  }
+
+  .widget ul.chips-on-mobile li > :is(a, .theme-toggle) {
+    display: inline-block;
     padding: 6px 12px;
     background: var(--surface-muted);
     border-radius: 999px;
   }
-
-  .widget ul.chips-on-mobile .count {
-    margin-left: 4px;
-  }
 }
 
-@media (max-width: 640px) {
-  .page {
-    padding: 16px 0 28px;
-  }
-
-  .card {
-    padding: 22px 18px 28px;
-  }
-
-  .post-list {
-    gap: 14px;
-  }
-
-  .identity {
-    padding: 14px 0 12px;
-  }
-
-  .site-nav {
-    width: 100%;
-  }
-
-  .site-nav a:first-child {
-    margin-left: -12px;
-  }
-
-  .site-nav a[aria-current='page']:first-child {
-    margin-left: 0;
-  }
-
-  .banner {
-    height: 120px;
+@media (max-width: 600px) {
+  .post-title {
+    font-size: 24px;
+    line-height: 32px;
   }
 
   /* iOS zooms the page when a focused field is under 16px. */
@@ -1049,7 +1079,7 @@ h6 {
   }
 
   .prose pre {
-    margin-inline: -18px;
+    margin-inline: -30px;
     border-radius: 0;
   }
 }

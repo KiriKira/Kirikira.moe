@@ -39,3 +39,18 @@ const fmt = new Intl.DateTimeFormat('zh-CN', {
   day: '2-digit',
 });
 export const formatDate = (d: Date) => fmt.format(d);
+
+/** "2026年2月27日 15:40", as Django rendered dates on the old site. */
+const longParts = new Intl.DateTimeFormat('zh-CN', {
+  timeZone: 'Asia/Shanghai',
+  year: 'numeric',
+  month: 'numeric',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+export function formatDateTime(d: Date): string {
+  const p = Object.fromEntries(longParts.formatToParts(d).map((x) => [x.type, x.value]));
+  return `${p.year}年${p.month}月${p.day}日 ${p.hour}:${p.minute}`;
+}
