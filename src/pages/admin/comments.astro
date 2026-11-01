@@ -2,7 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import AdminNav from '../../components/AdminNav.astro';
 import { env } from '../../lib/env';
-import { adminIdentity } from '../../lib/access';
+import { adminIdentity, rememberAdminToken } from '../../lib/access';
 import { renderCommentBody } from '../../lib/comments/render';
 import { adminList, countByStatus } from '../../lib/comments/store';
 import { getThreads, type Threads } from '../../lib/comments/threads';
@@ -12,6 +12,7 @@ export const prerender = false;
 
 const who = await adminIdentity(Astro.request, env);
 if (!who) return new Response('Forbidden', { status: 403 });
+rememberAdminToken(Astro.cookies, Astro.request, env);
 
 const PAGE_SIZE = 50;
 const params = Astro.url.searchParams;

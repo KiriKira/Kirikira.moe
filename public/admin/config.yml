@@ -1,11 +1,11 @@
 # Sveltia CMS — https://sveltiacms.app/en/docs
 # Open https://kirikira.moe/admin/ , sign in with a GitHub personal access token
 # (fine-grained, this repo only, Contents: read & write). Every save is a commit to
-# `main`; Cloudflare Workers Builds then rebuilds and deploys the site (~1-2 min).
+# `master`; Cloudflare Workers Builds then rebuilds and deploys the site (~1-2 min).
 backend:
   name: github
   repo: KiriKira/Kirikira.moe
-  branch: main
+  branch: master
   commit_messages:
     create: 'post: add “{{slug}}”'
     update: 'post: update “{{slug}}”'
@@ -47,12 +47,17 @@ collections:
     extension: md
     format: frontmatter
     create: true
-    # Type an English slug (e.g. "my-new-post") when creating a post; it becomes
-    # /post/<slug>/ and is locked afterwards so published URLs never change.
+    description: 新建文章时「文件名」填文章序号（当前最大 54，下一篇 55）。地址就是 /post/序号/，发布后不能再改。
     slug:
       editable: [create]
     identifier_field: title
-    summary: '{{title}} ({{date | date("YYYY-MM-DD")}}){{draft | ternary(" [草稿]", "")}}'
+    summary: '{{title}}'
+    # Table view columns (large screens): summary = title, plus date / category / draft.
+    table_columns:
+      - _summary
+      - date
+      - category
+      - draft
     sortable_fields:
       fields: [date, title, category]
       default: { field: date, direction: descending }
@@ -61,13 +66,14 @@ collections:
     preview_path: 'post/{{slug}}/'
     fields:
       - { name: title, label: 标题, widget: string }
-      - { name: date, label: 发布时间, widget: datetime }
-      - { name: updated, label: 更新时间, widget: datetime, required: false }
+      - { name: date, label: 发布时间, widget: datetime, input_timezone: 'Asia/Shanghai', output_utc: true, default: '{{now}}' }
+      - { name: updated, label: 更新时间, widget: datetime, required: false, auto_now: true, input_timezone: 'Asia/Shanghai', output_utc: true, hint: 保存时自动写入当前时间，不用手填 }
       - name: category
         label: 分类
-        widget: string
-        default: 未分类
-        hint: 与已有分类同名即归入该分类
+        widget: select
+        options: ['碎碎念', '无情安利', '流下了没有技术的泪水', 'BABU']
+        default: 碎碎念
+        hint: 要加新分类，改 public/admin/config.yml 的 options（或少见情况告诉 Hermes）
       - { name: tags, label: 标签, widget: list, required: false, default: [] }
       - { name: excerpt, label: 摘要, widget: text, required: false, hint: 首页列表与 RSS 中显示 }
       - { name: draft, label: 草稿, widget: boolean, default: false, hint: 草稿不会出现在线上站点 }
@@ -89,5 +95,4 @@ collections:
           视频、B站/YouTube/网易云：用工具栏的「视频」「嵌入」按钮（也可手写：视频写成 ![说明](xxx.mp4)，嵌入就是单独一行贴链接）。
       # Comment thread id. Generated once; never edit (it links the post to its comments).
       - { name: cid, label: 评论 ID, widget: uuid, read_only: true, required: false }
-      - { name: slug, label: 旧站 slug, widget: string, required: false, hint: 迁移文章保留旧 URL 用，新文章留空 }
       - { name: legacyId, label: 旧站文章 ID, widget: number, value_type: int, required: false, hint: 迁移数据，勿改 }

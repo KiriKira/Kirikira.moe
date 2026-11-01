@@ -2,7 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import AdminNav from '../../components/AdminNav.astro';
 import { env } from '../../lib/env';
-import { adminIdentity } from '../../lib/access';
+import { adminIdentity, rememberAdminToken } from '../../lib/access';
 import { listRules } from '../../lib/comments/store';
 import { SPAM_THRESHOLD } from '../../lib/comments/spam';
 
@@ -10,6 +10,7 @@ export const prerender = false;
 
 const who = await adminIdentity(Astro.request, env);
 if (!who) return new Response('Forbidden', { status: 403 });
+rememberAdminToken(Astro.cookies, Astro.request, env);
 
 const rules = await listRules(env.DB);
 const KIND_LABEL: Record<string, string> = {
