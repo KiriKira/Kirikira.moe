@@ -18,6 +18,8 @@ export interface CommentRow {
   ai_spam: number | null;
   ai_kind: string | null;
   ai_checked_at: string | null;
+  /** 1 = email the author when someone replies (migration 0003). */
+  notify: number;
   created_at: string;
   legacy_id: number | null;
 }
@@ -50,4 +52,6 @@ export interface CommentInput {
   email: string;
   url: string;
   body: string;
+  /** Email me when someone replies (only meaningful with an email). */
+  notify: boolean;
 }

@@ -86,13 +86,13 @@ export async function insertComment(db: D1Database, c: NewComment): Promise<numb
     .prepare(
       `INSERT INTO comments
          (post_id, parent_id, name, email, url, body, body_fp, status, spam_score, spam_reasons,
-          ip_hash, user_agent, pow_nonce, ai_spam, ai_kind, ai_checked_at, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ip_hash, user_agent, pow_nonce, ai_spam, ai_kind, ai_checked_at, notify, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        RETURNING id`,
     )
     .bind(
       c.post_id, c.parent_id, c.name, c.email, c.url, c.body, c.body_fp, c.status, c.spam_score,
-      c.spam_reasons, c.ip_hash, c.user_agent, c.pow_nonce, c.ai_spam, c.ai_kind, c.ai_checked_at, c.created_at,
+      c.spam_reasons, c.ip_hash, c.user_agent, c.pow_nonce, c.ai_spam, c.ai_kind, c.ai_checked_at, c.notify, c.created_at,
     )
     .first<{ id: number }>();
   return row!.id;
@@ -239,4 +239,45 @@ export async function countRecentSpam(db: D1Database, days = 7, now = Date.now()
     .bind(minutesAgo(now, days * 24 * 60))
     .first<{ n: number }>();
   return row?.n ?? 0;
+}
+
+// ---------- reply notifications (migration 0003) ----------
+
+export async function isOptedOut(db: D1Database, emailHash: string): Promise<boolean> {
+  return !!(await db.prepare(`SELECT 1 AS hit FROM email_optouts WHERE email_hash = ?`).bind(emailHash).first());
+}
+
+export async function optOut(db: D1Database, emailHash: string, now = new Date().toISOString()): Promise<void> {
+  await db.prepare(`INSERT OR IGNORE INTO email_optouts (email_hash, created_at) VALUES (?, ?)`).bind(emailHash, now).run();
+}
+
+/** Whether a reply already triggered a successful notification (each reply notifies once). */
+export async function wasNotified(db: D1Database, commentId: number): Promise<boolean> {
+  return !!(await db
+    .prepare(`SELECT 1 AS hit FROM notifications WHERE comment_id = ? AND status = 'sent'`)
+    .bind(commentId)
+    .first());
+}
+
+/** Successful sends in the last 24 hours: in total, and to one recipient. */
+export async function sentLastDay(db: D1Database, toHash: string, now = Date.now()): Promise<{ total: number; toRecipient: number }> {
+  const row = await db
+    .prepare(
+      `SELECT COUNT(*) AS total, SUM(CASE WHEN to_hash = ?1 THEN 1 ELSE 0 END) AS to_recipient
+       FROM notifications WHERE status = 'sent' AND created_at >= ?2`,
+    )
+    .bind(toHash, minutesAgo(now, 24 * 60))
+    .first<{ total: number; to_recipient: number | null }>();
+  return { total: row?.total ?? 0, toRecipient: row?.to_recipient ?? 0 };
+}
+
+export async function logNotification(
+  db: D1Database,
+  n: { commentId: number; toHash: string; status: 'sent' | 'failed'; error?: string | null },
+  now = new Date().toISOString(),
+): Promise<void> {
+  await db
+    .prepare(`INSERT INTO notifications (comment_id, to_hash, status, error, created_at) VALUES (?, ?, ?, ?, ?)`)
+    .bind(n.commentId, n.toHash, n.status, n.error?.slice(0, 500) ?? null, now)
+    .run();
 }

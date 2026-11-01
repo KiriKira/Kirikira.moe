@@ -56,5 +56,7 @@ export function validateComment(raw: Record<string, unknown>): ValidationResult 
   else if (body.length > LIMITS.body) errors.body = `评论不能超过 ${LIMITS.body} 个字符`;
 
   if (Object.keys(errors).length > 0) return { ok: false, errors };
-  return { ok: true, value: { postId, parentId, name, email, url, body } };
+  // Opt-out checkbox: anything but an explicit false keeps notifications on.
+  const notify = raw.notify !== false && raw.notify !== 'false' && raw.notify !== '0';
+  return { ok: true, value: { postId, parentId, name, email, url, body, notify } };
 }

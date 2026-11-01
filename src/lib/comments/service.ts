@@ -36,7 +36,7 @@ export interface SubmitContext {
 export type SubmitResult =
   | { status: 400; errors: Record<string, string> }
   | { status: 404 }
-  | { status: 200; comment: PublicComment; verdict: SpamVerdict; stored: boolean };
+  | { status: 200; comment: PublicComment; verdict: SpamVerdict; stored: boolean; row?: CommentRow };
 
 /**
  * Handles a comment submission. Anything that looks like spam still gets a normal
@@ -118,6 +118,7 @@ export async function submitComment(raw: Record<string, unknown>, ctx: SubmitCon
     ai_spam: ai ? 1 - ai.reader : null,
     ai_kind: ai?.kind ?? null,
     ai_checked_at: ai ? createdAt : null,
+    notify: input.notify ? 1 : 0,
     created_at: createdAt,
   };
 
@@ -137,5 +138,5 @@ export async function submitComment(raw: Record<string, unknown>, ctx: SubmitCon
     }
     throw err;
   }
-  return { status: 200, comment: toPublic({ ...row, id }), verdict, stored: true };
+  return { status: 200, comment: toPublic({ ...row, id }), verdict, stored: true, row: { ...row, id, legacy_id: null } };
 }
