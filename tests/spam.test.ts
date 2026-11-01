@@ -9,6 +9,7 @@ const input = (over: Partial<CommentInput> = {}): CommentInput => ({
   email: '',
   url: '',
   body: '写得很好，学到了！',
+  notify: true,
   ...over,
 });
 
@@ -218,6 +219,26 @@ describe('legacy spam samples and false positives', () => {
 
   it.each(GOOD.map((c) => [c.body, c]))('rules alone never hide "%s"', (_, c) => {
     expect(judgeComment(c, neutral).isSpam).toBe(false);
+  });
+
+  // False positives from the first re-scan of the old site's comments.
+  it('a fellow blogger asking to exchange links is not link spam', () => {
+    const c = old('SunZ', '', '互加友情链接呀，我主页已经加你啦：[https://blog.example.me](https://blog.example.me)');
+    expect(countLinks(c.body)).toBe(1);
+    expect(judgeComment(c, neutral).isSpam).toBe(false);
+    expect(judgeComment(c, doubtful('promotion')).isSpam).toBe(false);
+  });
+
+  it('an emoji-only reaction from someone with a homepage is harmless', () => {
+    const c = old('Mice', 'https://mice.example/', '😘😘😘', 'mice@example.com');
+    expect(judgeComment(c, neutral).reasons).not.toContain('no-cjk-with-link');
+    expect(isHarmlessReaction(c)).toBe(true);
+    expect(judgeComment(c, signals({ ipHash: null, ai: { reader: 0.1, kind: 'template' } })).isSpam).toBe(false);
+  });
+
+  it('counts the same link once', () => {
+    expect(countLinks('https://a.me https://a.me/ and https://A.me.')).toBe(1);
+    expect(countLinks('https://a.me https://b.me')).toBe(2);
   });
 
   it('hides comments written in a script the readers do not use', () => {
