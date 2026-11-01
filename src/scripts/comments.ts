@@ -73,7 +73,12 @@ function add(parent: Node, ...children: Node[]): void {
   for (const child of children) parent.appendChild(child);
 }
 
-function renderComment(c: PublicComment, onReply: (c: PublicComment) => void): HTMLLIElement {
+/** Node.after() without the Workers type clash (see add()). */
+function insertAfter(ref: Node, node: Node): void {
+  ref.parentNode!.insertBefore(node, ref.nextSibling);
+}
+
+function renderComment(c: PublicComment, onReply: (c: PublicComment) => void, parent?: PublicComment): HTMLLIElement {
   const li = el('li', 'comment');
   li.id = `comment-${c.id}`;
 
@@ -84,11 +89,18 @@ function renderComment(c: PublicComment, onReply: (c: PublicComment) => void): H
   const main = el('div', 'comment-main');
   const head = el('div', 'comment-head');
   add(head, el('span', 'comment-author', c.name));
+  if (parent) {
+    // Who this answers; jumps to (and highlights) that comment.
+    const to = el('a', 'comment-reply-to', `回复 @${parent.name}`);
+    to.href = `#comment-${parent.id}`;
+    add(head, to);
+  }
   const time = el('time', 'comment-time', `${timeFmt.format(new Date(c.createdAt))} UTC`);
   time.dateTime = c.createdAt;
   add(head, time);
-  const reply = el('button', 'link-button', '回复');
+  const reply = el('button', 'link-button comment-reply', '↩ 回复');
   reply.type = 'button';
+  reply.setAttribute('aria-label', `回复 ${c.name}`);
   reply.addEventListener('click', () => onReply(c));
   add(head, reply);
 
@@ -127,7 +139,7 @@ function renderList(list: HTMLOListElement, comments: PublicComment[], onReply: 
     const kids = replies.get(root.id);
     if (kids?.length) {
       const ol = el('ol', 'comment-replies');
-      for (const k of kids) add(ol, renderComment(k, onReply));
+      for (const k of kids) add(ol, renderComment(k, onReply, byId.get(k.parentId!)));
       add(li.querySelector('.comment-main')!, ol);
     }
     add(list, li);
@@ -164,21 +176,38 @@ export function initComments(root: HTMLElement): void {
   const status = form.querySelector<HTMLElement>('.form-status')!;
   const submit = form.querySelector<HTMLButtonElement>('.submit')!;
   const replying = form.querySelector<HTMLElement>('.replying')!;
+  const notifyOpt = form.querySelector<HTMLElement>('.notify-opt')!;
+  const notifyBox = form.elements.namedItem('notify') as HTMLInputElement;
+  // Where the form lives when not replying; replying moves it under the comment.
+  const home = document.createComment('comment-form');
+  form.parentNode!.insertBefore(home, form);
 
   let serverComments: PublicComment[] = [];
   let parentId: number | null = null;
   let pow: PendingPow | null = null;
 
+  /** Put the form under the comment being answered, or back at the bottom. */
+  const placeForm = () => {
+    // Right under the comment's text, above any replies it already has.
+    const target = parentId === null ? null : document.getElementById(`comment-${parentId}`)?.querySelector(':scope > .comment-main > .comment-body');
+    if (target) insertAfter(target, form);
+    else {
+      parentId = null;
+      insertAfter(home, form);
+    }
+    form.classList.toggle('inline', !!target);
+    replying.hidden = !target;
+  };
   const onReply = (c: PublicComment) => {
     parentId = c.id;
-    replying.hidden = false;
-    replying.querySelector('b')!.textContent = c.name;
-    form.querySelector('textarea')!.focus();
-    form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    replying.querySelector('b')!.textContent = `@${c.name}`;
+    placeForm();
+    form.querySelector('textarea')!.focus({ preventScroll: true });
+    form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   };
   replying.querySelector('.cancel-reply')!.addEventListener('click', () => {
     parentId = null;
-    replying.hidden = true;
+    placeForm();
   });
 
   const rerender = () => {
@@ -188,14 +217,18 @@ export function initComments(root: HTMLElement): void {
     saveMyComments(thread, mine);
     const all = [...serverComments, ...mine];
     count.textContent = all.length ? `(${all.length})` : '';
+    insertAfter(home, form); // the list is about to be replaced; don't lose the form with it
     renderList(list, all, onReply);
+    placeForm();
   };
 
   const load = async () => {
     try {
       const res = await fetch(`/api/comments?post=${encodeURIComponent(thread)}`);
       if (!res.ok) throw new Error(String(res.status));
-      serverComments = ((await res.json()) as { comments: PublicComment[] }).comments;
+      const data = (await res.json()) as { comments: PublicComment[]; notify?: boolean };
+      serverComments = data.comments;
+      notifyOpt.hidden = !data.notify; // only offered when the site can send email
     } catch {
       serverComments = [];
       list.replaceChildren(el('li', 'comment-placeholder', '评论加载失败，请稍后刷新重试。'));
@@ -222,6 +255,7 @@ export function initComments(root: HTMLElement): void {
     const input = form.elements.namedItem(key) as HTMLInputElement;
     if (profile[key]) input.value = profile[key];
   }
+  if (profile.notify === 'no') notifyBox.checked = false;
 
   // Start the proof of work as soon as someone shows intent to comment.
   const ensurePow = () => {
@@ -271,6 +305,7 @@ export function initComments(root: HTMLElement): void {
           email: value('email'),
           url: value('url'),
           body: value('body'),
+          notify: notifyBox.checked,
           website: value('website'),
           pow: solved,
         }),
@@ -286,11 +321,10 @@ export function initComments(root: HTMLElement): void {
       }
       if (!res.ok || !payload.comment) throw new Error(String(res.status));
 
-      writeJson(PROFILE_KEY, { name: value('name'), email: value('email'), url: value('url') });
+      writeJson(PROFILE_KEY, { name: value('name'), email: value('email'), url: value('url'), notify: notifyBox.checked ? 'yes' : 'no' });
       saveMyComments(thread, [...myComments(thread), payload.comment]);
       (form.elements.namedItem('body') as HTMLTextAreaElement).value = '';
       parentId = null;
-      replying.hidden = true;
       pow = null; // each challenge is single-use
       rerender();
       document.getElementById(`comment-${payload.comment.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });

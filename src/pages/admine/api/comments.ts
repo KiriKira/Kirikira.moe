@@ -7,7 +7,8 @@ import * as store from '../../../lib/comments/store';
 import { isAiEnabled } from '../../../lib/comments/ai';
 import { rescanBatch } from '../../../lib/comments/rescan';
 import { getThreads } from '../../../lib/comments/threads';
-import type { SpamRuleKind } from '../../../lib/comments/types';
+import type { CommentRow, SpamRuleKind } from '../../../lib/comments/types';
+import { notifyInBackground } from '../../../lib/comments/notify-env';
 
 export const prerender = false;
 
@@ -24,7 +25,7 @@ export const GET: APIRoute = async ({ request }) => {
  * Form-post endpoint behind the admin pages (/admine/api/comments). Every action redirects back to
  * `redirect` (same-origin paths only) so the admin UI works without JavaScript.
  */
-export const POST: APIRoute = async ({ request, redirect, url }) => {
+export const POST: APIRoute = async ({ request, redirect, url, locals }) => {
   if (!(await adminIdentity(request, env))) return new Response('Forbidden', { status: 403 });
   if (!isSameOrigin(request)) return new Response('Bad origin', { status: 403 });
 
@@ -44,9 +45,13 @@ export const POST: APIRoute = async ({ request, redirect, url }) => {
     case 'spam':
       await store.setStatus(env.DB, ids, 'spam');
       break;
-    case 'publish':
+    case 'publish': {
       await store.setStatus(env.DB, ids, 'published');
+      // A reply wrongly filtered as spam notifies once it's restored (recent ones only).
+      const rows = (await Promise.all(ids.map((id) => store.getComment(env.DB, id)))).filter((r): r is CommentRow => !!r);
+      notifyInBackground(locals, url, rows);
       break;
+    }
     case 'ban-domains':
     case 'ban-ip':
     case 'ban-email': {

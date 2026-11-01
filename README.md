@@ -4,7 +4,7 @@ Kiri 的博客。2026 年从 Django（`legacy/`）重构为 **Astro 7 + Cloudfla
 
 - **文章**：`src/content/posts/*.md`（Markdown + front matter），构建时预渲染为静态页。
 - **在线编辑**：`/admine/` 上的 [Sveltia CMS](https://sveltiacms.app/)，保存即提交到 GitHub，Cloudflare Workers Builds 自动构建部署（1–2 分钟），本地不用编译。
-- **评论**：自托管在 Cloudflare D1，免注册，不用任何第三方验证码。垃圾评论被**静默过滤**：发送者看到「评论成功」且在自己浏览器里能看到，其他人看不到；站长在 `/admine/comments` 审查、恢复或删除（和 CMS 同一个后台、同一次登录；未登录访问 `/admine` 只会看到 404）。
+- **评论**：自托管在 Cloudflare D1，免注册，不用任何第三方验证码。垃圾评论被**静默过滤**：发送者看到「评论成功」且在自己浏览器里能看到，其他人看不到；站长在 `/admine/comments` 审查、恢复或删除（和 CMS 同一个后台、同一次登录；未登录访问 `/admine` 只会看到 404）。点评论旁的「↩ 回复」，输入框会出现在那条评论下面；回复会标出「回复 @某人」，点它跳到被回复的那条。被回复的人留了邮箱的话会收到邮件通知（可选功能，配置见 [runbook 7.4](docs/MIGRATION_RUNBOOK.md#74-回复邮件通知可选默认关闭)）。
 - 旧链接（`/post/<id>/`、`/page/<n>/`、`/category/<id>/`、`/rss/`、`/sitemap.xml`）全部保留或 301。
 
 迁移、发布与事故处理见 **[docs/MIGRATION_RUNBOOK.md](docs/MIGRATION_RUNBOOK.md)**，设计与选型见 [docs/MIGRATION_PLAN.md](docs/MIGRATION_PLAN.md)。
@@ -60,7 +60,7 @@ src/
   content/posts/          文章（文件名 = URL slug）
   content.config.ts       front matter schema
   pages/                  页面；api/ 与 admin/ 是唯一的动态路由
-  lib/comments/           评论系统：spam.ts（过滤规则）、pow.ts（工作量证明）、store.ts（D1）、service.ts
+  lib/comments/           评论系统：spam.ts（过滤规则）、ai.ts（Clef-flash）、pow.ts（工作量证明）、store.ts（D1）、service.ts、notify.ts + mail.ts（回复邮件通知）
   lib/access.ts           Cloudflare Access JWT 校验（后台鉴权）
   scripts/comments.ts     评论区前端
   worker.ts               Worker 入口（Astro + 每日清理垃圾评论的 cron）
@@ -81,6 +81,8 @@ legacy/                   旧 Django 站点（只读参考）
 5. **AI 判断（Workers AI · Clef-flash）**：Cloudflare 的决策模型，只问**一道单选题**：「这条评论是谁写的、为了什么？」选项是 真实读者 / 推广外链 / 群发模板套话 / 诈骗违规，各有具体描述，概率加起来是 1，模型必须表态（以前拆成五道是非题，每道都停在 50% 左右，叠加后只剩噪音）。给它的是站长审评论时会看的原始信息：文章标题和摘要、表单里填的昵称/邮箱/网址原样、评论原文、同一作者在本站的其他评论（换一种语言重复同一句话的机器人一眼可见），并明确告诉它本站读者只用中文、英文、日文，其他语言都是机器人。「真实读者」概率 ≤15% 直接判垃圾；≤40% 再加上任一条规则即判垃圾；≥85% 可以抵消结构规则的误伤，但推翻不了 1–3 和你自己加的规则；`=W=`、「好耶」、`233` 这类无链接短评论只有在 ≤5% 时才会被判。只有通过 1–3 的评论才会送去判断，机器人刷不掉免费额度（每条约 1–2 neurons，每天免费 10,000）。
    改提示词前后用 `node scripts/eval/eval-spam.ts --compare` 在真实 Workers AI 上量一下（需要 `CLOUDFLARE_ACCOUNT_ID`、`CLOUDFLARE_API_TOKEN`）：它对 `scripts/eval/spam-samples.json` 里标好的垃圾/正常评论打分，输出排序质量（AUC）和各阈值下拦住多少垃圾、误伤了谁。把后台里被判错的评论加进样本。
 6. **自定义规则**：后台「过滤规则」页增删关键词/域名/正则/邮箱/IP（IP 只存 HMAC 哈希）。负权重可当白名单。
+
+「链接」按不同网址计数（Markdown 写法 `[网址](网址)` 算一个）；只有表情、没有文字的评论（😘😘😘）就算填了网址也按无害短评论处理。
 
 总分 ≥ 100 判为垃圾。评论里的链接一律 `nofollow ugc`，评论者网址不公开显示，对 SEO 灌水没有价值。
 已有评论可以在后台一键「重新检查全部公开评论」（规则 + AI，AI 不可用时只按规则；改了规则后可以再跑）。迁移脚本导入旧评论时也会先按规则判一遍，明显的垃圾直接以隐藏状态导入；垃圾评论 30 天后自动删除（`SPAM_RETENTION_DAYS`）。

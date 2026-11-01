@@ -16,7 +16,7 @@ const { threadId } = Astro.props;
     <h3 class="comment-form-title">Leave a reply</h3>
     <p class="replying" hidden>
       回复 <b></b>
-      <button type="button" class="link-button cancel-reply">取消回复</button>
+      <button type="button" class="link-button cancel-reply">取消</button>
     </p>
     <label class="field field-body">
       <span>评论内容（支持 Markdown）</span>
@@ -36,6 +36,10 @@ const { threadId } = Astro.props;
         <input name="url" type="url" maxlength="200" inputmode="url" placeholder="https://" />
       </label>
     </div>
+    <label class="notify-opt" hidden>
+      <input type="checkbox" name="notify" checked />
+      有人回复我时发邮件通知（需填邮箱，邮件里可一键退订）
+    </label>
     <!-- Honeypot: people never see or fill this; naive bots do. -->
     <div class="hp" aria-hidden="true">
       <label>Website <input name="website" tabindex="-1" autocomplete="off" /></label>
@@ -149,6 +153,87 @@ const { threadId } = Astro.props;
   .link-button:hover {
     color: var(--accent);
   }
+  .comment-reply {
+    margin-left: auto;
+  }
+  .comment-reply-to {
+    color: var(--text-faint);
+    text-decoration: none;
+  }
+  .comment-reply-to:hover {
+    color: var(--accent);
+  }
+  /* Jumped to via "回复 @name": flash the comment being answered. */
+  .comment:target > .comment-main {
+    animation: comment-flash 1.6s ease-out;
+  }
+  @keyframes comment-flash {
+    from {
+      background: color-mix(in srgb, var(--chip) 22%, transparent);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .comment:target > .comment-main {
+      animation: none;
+      outline: 2px solid color-mix(in srgb, var(--chip) 40%, transparent);
+    }
+  }
+  .comment-form.inline {
+    margin-top: 12px;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+  }
+  .comment-form.inline .comment-form-title {
+    display: none;
+  }
+  .replying {
+    margin: 0 0 10px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .replying .cancel-reply {
+    margin-left: 8px;
+  }
+  .notify-opt {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .notify-opt[hidden] {
+    display: none;
+  }
+  /* Phones: less indentation so a reply form nested two levels deep still has room. */
+  @media (max-width: 600px) {
+    .comment {
+      grid-template-columns: 32px minmax(0, 1fr);
+      gap: 0 10px;
+    }
+    .comment-avatar {
+      width: 32px;
+      height: 32px;
+      font-size: 15px;
+    }
+    .comment-replies {
+      margin-left: 0;
+      padding-left: 10px;
+    }
+    .comment-replies .comment-avatar {
+      width: 26px;
+      height: 26px;
+      font-size: 13px;
+    }
+    .comment-replies .comment {
+      grid-template-columns: 26px minmax(0, 1fr);
+    }
+    .comment-form.inline {
+      padding: 12px 10px;
+      margin-left: -36px; /* reclaim the avatar column */
+    }
+  }
   .comment-placeholder {
     color: var(--text-faint);
     padding: 12px 0;
@@ -171,7 +256,7 @@ const { threadId } = Astro.props;
   .field-row {
     display: grid;
     gap: 12px;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
     margin-top: 12px;
   }
   .field input,

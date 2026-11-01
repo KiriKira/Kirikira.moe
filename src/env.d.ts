@@ -14,6 +14,14 @@ interface Env {
   AI?: Ai;
   AI_SPAM_CHECK?: string;
   SPAM_RETENTION_DAYS: string;
+  /** Reply notifications (src/lib/comments/mail.ts): sender, e.g. "Kiri 的博客 <noreply@kirikira.moe>". */
+  MAIL_FROM?: string;
+  /** Secret: Resend API key (free plan, 100 emails/day). */
+  RESEND_API_KEY?: string;
+  /** Cloudflare Email Service binding (sending to anyone needs Workers Paid). */
+  EMAIL?: SendEmail;
+  /** Max notification emails per 24h (default 90, under Resend's free 100/day). */
+  MAIL_DAILY_LIMIT?: string;
 }
 
 declare namespace Cloudflare {

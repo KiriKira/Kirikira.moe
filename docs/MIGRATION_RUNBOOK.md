@@ -209,6 +209,31 @@ Zero Trust → Access → Applications → Add → Self-hosted：
 - 关闭：把 `vars.AI_SPAM_CHECK` 改成 `"off"`。
 - 本地开发（`npm run dev` / `wrangler dev --local`）没有 AI，只按规则判。
 
+### 7.4 回复邮件通知（可选，默认关闭）
+
+有人回复某条评论时，给那条评论的作者发邮件（他留了邮箱、没取消勾选「有人回复我时发邮件通知」、没退订）。没配置时整个功能关闭，评论框里也不显示那个勾选项；表结构（migration 0003）随部署自动建好，不影响任何现有功能。
+
+为什么不用 Cloudflare 自己的发信：Cloudflare Email Service 给**任意地址**发信需要 Workers Paid（$5/月，含 3,000 封）；免费计划只能发给你自己账户里验证过的地址，通知不了读者。所以默认用 **Resend 免费计划**（3,000 封/月、100 封/天，个人博客的回复量远远够）。
+
+1. 注册 https://resend.com ，Domains → Add Domain，建议用子域名 `notify.kirikira.moe`（不影响根域名的邮件信誉和 Email Routing 的 MX 记录）。它会给出几条 DNS 记录（DKIM、SPF、MX），选「Sign in to Cloudflare」自动添加，或手动加到 Cloudflare DNS（**关闭橙色云朵代理**）。等状态变成 Verified。
+2. API Keys → Create，权限选 **Sending access**、只限这个域名。然后：
+   ```sh
+   npx wrangler secret put RESEND_API_KEY      # 粘贴 re_... ；只存在 Cloudflare，不进仓库
+   ```
+3. 在 `wrangler.jsonc` 的 `vars` 里填发件人并提交（Workers Builds 自动部署）：
+   ```jsonc
+   "MAIL_FROM": "Kiri 的博客 <noreply@notify.kirikira.moe>"
+   ```
+4. 验证：在任意文章下用自己的另一个邮箱留言，再回复它，1 分钟内应收到邮件；点邮件底部「不想再收到回复通知」应能退订。发送记录在 D1 的 `notifications` 表（只存邮箱的 HMAC，不存地址；失败的有错误信息）：
+   ```sh
+   npx wrangler d1 execute kirikira --remote --command "SELECT comment_id, status, error, created_at FROM notifications ORDER BY id DESC LIMIT 20"
+   ```
+
+规则：只通知已公开的回复（被判垃圾的不发；在后台把 7 天内的误判回复恢复为公开时会补发）；自己回复自己不发；同一个收件人每天最多 5 封，全站每天最多 `MAIL_DAILY_LIMIT`（默认 90，低于 Resend 免费的 100）；邮件里回复内容是纯文本，只链接到本站的评论；每封都带一键退订（`List-Unsubscribe`）。旧站导入的评论同样会收到通知（有邮箱的话），可随时退订。
+
+以后升级到 Workers Paid 想改用 Cloudflare 发信：在 Cloudflare 后台为域名开通 Email Service，`wrangler.jsonc` 加 `"send_email": [{ "name": "EMAIL" }]`，删掉 `RESEND_API_KEY` 这个 secret 即可（两者都有时优先用 Resend）。
+关闭：把 `MAIL_FROM` 改回空字符串。
+
 ## 8. 收尾
 
 - 新站稳定运行 1–2 周后再下线旧服务器。

@@ -64,7 +64,8 @@ export const VERDICT_QUESTION = {
     reader:
       'A person who actually read this blog, writing to the author or other readers in Chinese, English or ' +
       'Japanese: reacting to the post, asking or answering a question, thanking, joking or chatting. Any length; ' +
-      'short replies and emoticons such as "=W=" or "233" count. Linking their own site or a relevant resource is fine.',
+      'short replies, emoji and emoticons such as "=W=" or "233" count. Linking their own site or a relevant ' +
+      'resource is fine, and so is a fellow blogger introducing their own blog or proposing to exchange links (友链).',
     promotion:
       'Advertising: the comment exists to promote a product, service, shop, tool, channel or website, or to ' +
       'place backlinks for search ranking (often through the website field, a keyword used as the name, or a list of domains).',

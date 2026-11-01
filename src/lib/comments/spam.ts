@@ -1,4 +1,7 @@
-import type { CommentInput, SpamRule } from './types';
+import type { CommentInput as SubmittedComment, SpamRule } from './types';
+
+/** What the judge looks at (the notification preference is irrelevant to it). */
+type CommentInput = Omit<SubmittedComment, 'notify'>;
 
 /**
  * Silent spam filter. Every check adds weight; a total of SPAM_THRESHOLD or more
@@ -130,9 +133,19 @@ export function extractHosts(text: string): string[] {
   return hosts;
 }
 
+/**
+ * Distinct links: the same URL twice counts once, so a Markdown link written as
+ * `[https://a.me](https://a.me)` or a URL repeated for emphasis is still one link.
+ */
 export function countLinks(body: string): number {
-  return body.match(URL_RE)?.length ?? 0;
+  const urls = (body.match(URL_RE) ?? []).map((u) =>
+    u.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/[.,;:!?。，！？]+$/, '').replace(/\/+$/, ''),
+  );
+  return new Set(urls).size;
 }
+
+/** Any letter in any script; emoji, kaomoji symbols and numbers aren't letters. */
+const hasLetters = (s: string) => /\p{L}/u.test(s);
 
 /** Domains written without http:// (spammers list them to dodge link filters). */
 export function countBareDomains(body: string): number {
@@ -145,7 +158,10 @@ export function countBareDomains(body: string): number {
  */
 export function isHarmlessReaction(input: CommentInput): boolean {
   const body = input.body.trim();
-  if (input.url !== '' || countLinks(body) + countBareDomains(body) > 0 || [...body].length > 60) return false;
+  if (countLinks(body) + countBareDomains(body) > 0 || [...body].length > 60) return false;
+  // Emoji/kaomoji only ("😘😘😘"): nothing to read, so nothing to sell, website or not.
+  if (!hasLetters(body)) return true;
+  if (input.url !== '') return false;
   return CJK_RE.test(body) || (body.match(/\p{L}/gu)?.length ?? 0) < 12;
 }
 
@@ -200,7 +216,8 @@ export function judgeComment(input: CommentInput, signals: SpamSignals, rules: S
   if (bare >= 3) add(`bare-domains:${bare}`, WEIGHTS.bareDomains);
 
   const hasCjk = CJK_RE.test(input.body);
-  if (!hasCjk && (links > 0 || input.url !== '')) add('no-cjk-with-link', WEIGHTS.noCjkWithLink);
+  // Only for actual text: an emoji-only reaction from someone with a homepage isn't "foreign".
+  if (!hasCjk && hasLetters(input.body) && (links > 0 || input.url !== '')) add('no-cjk-with-link', WEIGHTS.noCjkWithLink);
 
   if (countLinks(input.name) > 0 || DOMAIN_LIKE_RE.test(input.name)) add('url-in-name', WEIGHTS.urlInName);
 

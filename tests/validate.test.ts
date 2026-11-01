@@ -7,7 +7,7 @@ describe('validateComment', () => {
   it('trims and accepts a minimal comment', () => {
     expect(validateComment(base)).toEqual({
       ok: true,
-      value: { postId: '12', parentId: null, name: 'Kiri', email: '', url: '', body: '你好' },
+      value: { postId: '12', parentId: null, name: 'Kiri', email: '', url: '', body: '你好', notify: true },
     });
   });
 

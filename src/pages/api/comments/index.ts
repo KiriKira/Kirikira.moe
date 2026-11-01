@@ -5,6 +5,7 @@ import { submitComment, toPublic } from '../../../lib/comments/service';
 import { listPublished } from '../../../lib/comments/store';
 import { getThreads } from '../../../lib/comments/threads';
 import { isAiEnabled } from '../../../lib/comments/ai';
+import { notificationsEnabled, notifyInBackground } from '../../../lib/comments/notify-env';
 
 export const prerender = false;
 
@@ -14,14 +15,15 @@ export const GET: APIRoute = async ({ url }) => {
   if (!post) return json({ error: 'missing post' }, { status: 400 });
   const rows = await listPublished(env.DB, post);
   return json(
-    { comments: rows.map(toPublic) },
+    // notify: whether to offer "email me about replies" in the form.
+    { comments: rows.map(toPublic), notify: notificationsEnabled() },
     // Short shared cache; a new comment shows up for its author immediately via localStorage anyway.
     { headers: { 'cache-control': 'public, max-age=15' } },
   );
 };
 
 /** POST /api/comments — submit. Spam gets the same 200 response as everything else. */
-export const POST: APIRoute = async ({ request, url }) => {
+export const POST: APIRoute = async ({ request, url, locals }) => {
   if (!request.headers.get('content-type')?.includes('application/json')) {
     // Plain form posts come from bots that never ran our script; pretend all is well.
     return json({ ok: true });
@@ -46,5 +48,6 @@ export const POST: APIRoute = async ({ request, url }) => {
 
   if (result.status === 400) return json({ errors: result.errors }, { status: 400 });
   if (result.status === 404) return json({ error: 'post not found' }, { status: 404 });
+  if (result.row && !result.verdict.isSpam) notifyInBackground(locals, url, [result.row]);
   return json({ ok: true, comment: result.comment });
 };
