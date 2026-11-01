@@ -1,26 +1,29 @@
 ---
-import { FRIENDS, SIDEBAR_LINKS, SITE } from '../site';
+import { CATEGORY_ORDER, FRIENDS, SIDEBAR_LINKS, SITE } from '../site';
+import ThemeToggle from './ThemeToggle.astro';
 import { categoryUrl, getPosts, groupBy } from '../lib/posts';
 
 const posts = await getPosts();
-const categories = [...groupBy(posts, (p) => [p.data.category])].sort((a, b) => b[1].length - a[1].length);
+const rank = (name: string) => (CATEGORY_ORDER.includes(name) ? CATEGORY_ORDER.indexOf(name) : CATEGORY_ORDER.length);
+const categories = [...groupBy(posts, (p) => [p.data.category])].sort(
+  (a, b) => rank(a[0]) - rank(b[0]) || b[1].length - a[1].length,
+);
 ---
 
 <aside class="sidebar">
   <a class="widget love-kiri shake" href={SITE.loveKiriHref}>
     <video src="/img/kiri.mp4" poster="/img/kiri.jpg" width="640" height="640" muted loop playsinline preload="none"></video>
-    <span>Love Kiri!</span>
+    <ul class="dotted"><li><span>Love Kiri!</span></li></ul>
   </a>
 
   <section class="widget">
     <h2 class="widget-title">分类</h2>
-    <ul class="chips-on-mobile">
+    <ul class="dotted chips-on-mobile">
       {
         categories.map(([name, list]) => (
           <li>
             <a href={categoryUrl(name)}>
               {name}
-              <span class="count">{list.length}</span>
             </a>
           </li>
         ))
@@ -38,12 +41,13 @@ const categories = [...groupBy(posts, (p) => [p.data.category])].sort((a, b) => 
           </li>
         ))
       }
+      <li><ThemeToggle /></li>
     </ul>
   </section>
 
   <section class="widget">
     <h2 class="widget-title">友情链接</h2>
-    <ul class="chips-on-mobile">
+    <ul class="dotted chips-on-mobile">
       {
         FRIENDS.map((f) => (
           <li>

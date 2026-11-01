@@ -2,9 +2,10 @@
 import Base from '../../layouts/Base.astro';
 import AdminNav from '../../components/AdminNav.astro';
 import { env } from '../../lib/env';
-import { adminIdentity, rememberAdminToken } from '../../lib/access';
+import { adminIdentity } from '../../lib/access';
 import { renderCommentBody } from '../../lib/comments/render';
-import { adminList, countByStatus } from '../../lib/comments/store';
+import { adminList, countByStatus, countUnscanned } from '../../lib/comments/store';
+import { AI_KINDS, isAiEnabled } from '../../lib/comments/ai';
 import { getThreads, type Threads } from '../../lib/comments/threads';
 import type { CommentStatus } from '../../lib/comments/types';
 
@@ -12,7 +13,6 @@ export const prerender = false;
 
 const who = await adminIdentity(Astro.request, env);
 if (!who) return new Response('Forbidden', { status: 403 });
-rememberAdminToken(Astro.cookies, Astro.request, env);
 
 const PAGE_SIZE = 50;
 const params = Astro.url.searchParams;
@@ -22,10 +22,13 @@ const q = params.get('q')?.trim() ?? '';
 const postId = params.get('post')?.trim() ?? '';
 const page = Math.max(1, Number(params.get('page')) || 1);
 
-const [{ rows, total }, counts] = await Promise.all([
+const [{ rows, total }, counts, unscanned] = await Promise.all([
   adminList(env.DB, { status, q, postId, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
   countByStatus(env.DB),
+  countUnscanned(env.DB),
 ]);
+const aiOn = isAiEnabled(env);
+const kindLabel = (k: string | null) => (k && k in AI_KINDS ? AI_KINDS[k as keyof typeof AI_KINDS] : '');
 let threads: Threads = {};
 try {
   threads = await getThreads(env, Astro.url);
@@ -43,7 +46,8 @@ const qs = (overrides: Record<string, string | number>) => {
   }
   return `?${p}`;
 };
-const time = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', dateStyle: 'short', timeStyle: 'short' });
+const fmt = new Intl.DateTimeFormat('zh-CN', { timeZone: 'UTC', dateStyle: 'short', timeStyle: 'short' });
+const time = { format: (d: Date) => `${fmt.format(d)} UTC` };
 const reasons = (json: string | null) => {
   try {
     return json ? (JSON.parse(json) as string[]) : [];
@@ -69,7 +73,26 @@ const reasons = (json: string | null) => {
         <span class="muted">共 {total} 条</span>
       </form>
 
-      <form method="post" action="/api/admin/comments" id="bulk">
+      <form class="ai-scan admin-filters" method="post" action="/admine/api/comments">
+        <input type="hidden" name="action" value="ai-scan" />
+        <input type="hidden" name="redirect" value={self} />
+        {
+          aiOn ? (
+            <>
+              <button type="submit" disabled={unscanned === 0}>
+                AI 重新检查公开评论
+              </button>
+              <span class="muted ai-scan-status">
+                {unscanned ? `还有 ${unscanned} 条公开评论没被 AI 检查过（例如旧站迁移的评论）。判为垃圾的会移到「垃圾」，可随时恢复。` : '所有公开评论都已经过 AI 检查。'}
+              </span>
+            </>
+          ) : (
+            <span class="muted">AI 检查未启用（需要 Workers AI 绑定 AI，且 AI_SPAM_CHECK 不为 off）。</span>
+          )
+        }
+      </form>
+
+      <form method="post" action="/admine/api/comments" id="bulk">
         <input type="hidden" name="redirect" value={self} />
         <div class="admin-actions">
           <span class="muted">对勾选的评论：</span>
@@ -134,6 +157,11 @@ const reasons = (json: string | null) => {
                     <td>
                       <span class={`badge ${c.status}`}>{c.status === 'spam' ? '垃圾' : '公开'}</span>
                       {c.spam_score > 0 && <div class="muted">分数 {c.spam_score}</div>}
+                      {c.ai_spam !== null && (
+                        <div class="muted" title="Clef-flash 判断为垃圾的概率">
+                          AI {Math.round(c.ai_spam * 100)}%{kindLabel(c.ai_kind) && ` · ${kindLabel(c.ai_kind)}`}
+                        </div>
+                      )}
                       {reasons(c.spam_reasons).map((r) => (
                         <div class="muted">{r}</div>
                       ))}
@@ -159,6 +187,43 @@ const reasons = (json: string | null) => {
 </Base>
 
 <script>
+  // AI re-scan: run batches until nothing is left, with live progress.
+  const scanForm = document.querySelector<HTMLFormElement>('form.ai-scan');
+  scanForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = scanForm.querySelector('button')!;
+    const status = scanForm.querySelector<HTMLElement>('.ai-scan-status')!;
+    button.disabled = true;
+    let checked = 0;
+    let flagged = 0;
+    try {
+      for (;;) {
+        // getAttribute: the hidden <input name="action"> shadows form.action.
+        const res = await fetch(scanForm.getAttribute('action')!, {
+          method: 'POST',
+          headers: { accept: 'application/json' },
+          body: new FormData(scanForm),
+        });
+        const r = (await res.json()) as { checked: number; flagged: number; remaining: number; error?: string };
+        if (r.error) {
+          status.textContent = r.error === 'ai-unavailable' ? 'Workers AI 暂时不可用（或今日免费额度已用完），稍后再试。' : 'AI 检查未启用。';
+          break;
+        }
+        checked += r.checked;
+        flagged += r.flagged;
+        status.textContent = `已检查 ${checked} 条，判为垃圾 ${flagged} 条，剩余 ${r.remaining} 条…`;
+        if (r.remaining === 0 || r.checked === 0) {
+          status.textContent = `完成：检查 ${checked} 条，${flagged} 条移到了「垃圾」。刷新页面查看。`;
+          break;
+        }
+      }
+    } catch {
+      status.textContent = `出错了（已检查 ${checked} 条），可以再点一次继续。`;
+    } finally {
+      button.disabled = false;
+    }
+  });
+
   const all = document.getElementById('check-all') as HTMLInputElement | null;
   all?.addEventListener('change', () => {
     for (const box of document.querySelectorAll<HTMLInputElement>('#bulk input[name="id"]')) box.checked = all.checked;

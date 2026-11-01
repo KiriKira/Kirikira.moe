@@ -16,13 +16,16 @@ export default defineConfig({
   adapter: cloudflare({
     // Optimise images at build time; avoids needing the (metered) Images binding.
     imageService: 'compile',
+    // Builds and `astro dev` must not need a Cloudflare login: the Workers AI binding is
+    // only real in production (comments are then judged by rules alone locally).
+    remoteBindings: false,
   }),
   session: false,
   // Fetch a page in the background when its link is hovered/tapped: near-instant navigation.
   prefetch: { prefetchAll: true, defaultStrategy: 'hover' },
   integrations: [
     sitemap({
-      filter: (page) => !page.includes('/admin/'),
+      filter: (page) => !page.includes('/admine'),
     }),
   ],
   markdown: {

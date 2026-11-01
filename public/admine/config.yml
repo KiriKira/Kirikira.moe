@@ -1,7 +1,7 @@
 # Sveltia CMS — https://sveltiacms.app/en/docs
-# Open https://kirikira.moe/admin/ , sign in with a GitHub personal access token
+# Open https://kirikira.moe/admine/ , sign in with a GitHub personal access token
 # (fine-grained, this repo only, Contents: read & write). Every save is a commit to
-# `migration-preview` (preview build only — revert to `main` before going live).
+# `migration-preview` (preview build only — revert to `master` before going live).
 backend:
   name: github
   repo: KiriKira/Kirikira.moe
@@ -66,14 +66,14 @@ collections:
     preview_path: 'post/{{slug}}/'
     fields:
       - { name: title, label: 标题, widget: string }
-      - { name: date, label: 发布时间, widget: datetime, input_timezone: 'Asia/Shanghai', output_utc: true, default: '{{now}}' }
-      - { name: updated, label: 更新时间, widget: datetime, required: false, auto_now: true, input_timezone: 'Asia/Shanghai', output_utc: true, hint: 保存时自动写入当前时间，不用手填 }
+      - { name: date, label: 发布时间 (UTC), widget: datetime, input_timezone: utc, output_utc: true, default: '{{now}}', hint: 全站时间均为 UTC }
+      - { name: updated, label: 更新时间 (UTC), widget: datetime, required: false, auto_now: true, input_timezone: utc, output_utc: true, hint: 保存时自动写入当前时间，不用手填 }
       - name: category
         label: 分类
         widget: select
         options: ['碎碎念', '无情安利', '流下了没有技术的泪水', 'BABU']
         default: 碎碎念
-        hint: 要加新分类，改 public/admin/config.yml 的 options（或少见情况告诉 Hermes）
+        hint: 要加新分类，改 public/admine/config.yml 的 options（或少见情况告诉 Hermes）
       - { name: tags, label: 标签, widget: list, required: false, default: [] }
       - { name: excerpt, label: 摘要, widget: text, required: false, hint: 首页列表与 RSS 中显示 }
       - { name: draft, label: 草稿, widget: boolean, default: false, hint: 草稿不会出现在线上站点 }

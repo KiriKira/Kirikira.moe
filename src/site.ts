@@ -14,6 +14,9 @@ export const SITE = {
   loveKiriHref: '/post/1/',
 };
 
+/** Sidebar category order (the old site listed categories by database id). Others follow by post count. */
+export const CATEGORY_ORDER = ['碎碎念', 'BABU', '无情安利', '流下了没有技术的泪水'];
+
 export const SIDEBAR_LINKS: { label: string; href: string; html?: string }[] = [
   { label: 'RSS', href: '/rss.xml' },
   { label: '归档', href: '/archives/' },

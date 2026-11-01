@@ -44,7 +44,7 @@ function saveMyComments(thread: string, list: PublicComment[]): void {
 // ---------- rendering ----------
 
 const timeFmt = new Intl.DateTimeFormat('zh-CN', {
-  timeZone: 'Asia/Shanghai',
+  timeZone: 'UTC',
   year: 'numeric',
   month: '2-digit',
   day: '2-digit',
@@ -84,7 +84,7 @@ function renderComment(c: PublicComment, onReply: (c: PublicComment) => void): H
   const main = el('div', 'comment-main');
   const head = el('div', 'comment-head');
   add(head, el('span', 'comment-author', c.name));
-  const time = el('time', 'comment-time', timeFmt.format(new Date(c.createdAt)));
+  const time = el('time', 'comment-time', `${timeFmt.format(new Date(c.createdAt))} UTC`);
   time.dateTime = c.createdAt;
   add(head, time);
   const reply = el('button', 'link-button', '回复');

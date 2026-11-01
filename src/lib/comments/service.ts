@@ -1,6 +1,7 @@
 import { checkPow } from './pow';
 import { renderCommentBody } from './render';
-import { fingerprintBody, judgeComment, type SpamVerdict } from './spam';
+import { aiSpamCheck, type AiResult } from './ai';
+import { fingerprintBody, hasHardReason, judgeComment, type SpamSignals, type SpamVerdict } from './spam';
 import * as store from './store';
 import type { CommentRow, PublicComment } from './types';
 import { validateComment } from './validate';
@@ -25,6 +26,9 @@ export interface SubmitContext {
   ip: string | null;
   userAgent: string | null;
   threadExists: (postId: string) => Promise<boolean>;
+  /** Workers AI binding when the AI check is enabled; omit to judge by rules only. */
+  ai?: Ai | null;
+  postTitle?: (postId: string) => Promise<string | undefined>;
   now?: number;
 }
 
@@ -62,19 +66,29 @@ export async function submitComment(raw: Record<string, unknown>, ctx: SubmitCon
     store.listRules(ctx.db),
   ]);
 
-  const verdict = judgeComment(
-    input,
-    {
-      honeypot: typeof raw.website === 'string' ? raw.website : '',
-      pow: pow.status,
-      // Only trust the timing when the challenge itself was authentic.
-      elapsedMs: pow.status === 'ok' || pow.status === 'replayed' ? pow.elapsedMs : null,
-      ipHash,
-      recentFromIp: recent,
-      duplicate,
-    },
-    rules,
-  );
+  const signals: SpamSignals = {
+    honeypot: typeof raw.website === 'string' ? raw.website : '',
+    pow: pow.status,
+    // Only trust the timing when the challenge itself was authentic.
+    elapsedMs: pow.status === 'ok' || pow.status === 'replayed' ? pow.elapsedMs : null,
+    ipHash,
+    recentFromIp: recent,
+    duplicate,
+  };
+  let verdict = judgeComment(input, signals, rules);
+
+  // Ask the model only about comments that got past the bot checks: bots can't drain the
+  // free quota, and a hard failure is spam whatever the model thinks.
+  let ai: AiResult | null = null;
+  if (ctx.ai && !hasHardReason(verdict.reasons)) {
+    ai = await aiSpamCheck(ctx.ai, {
+      name: input.name,
+      url: input.url,
+      body: input.body,
+      postTitle: await ctx.postTitle?.(input.postId),
+    });
+    if (ai) verdict = judgeComment(input, { ...signals, ai }, rules);
+  }
 
   const createdAt = new Date(now).toISOString();
   const row: store.NewComment = {
@@ -92,6 +106,9 @@ export async function submitComment(raw: Record<string, unknown>, ctx: SubmitCon
     user_agent: ctx.userAgent?.slice(0, 300) ?? null,
     // A replayed nonce is already in the table; storing it again would violate the unique index.
     pow_nonce: pow.status === 'ok' ? pow.nonce : null,
+    ai_spam: ai?.spam ?? null,
+    ai_kind: ai?.kind ?? null,
+    ai_checked_at: ai ? createdAt : null,
     created_at: createdAt,
   };
 

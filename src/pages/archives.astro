@@ -9,7 +9,7 @@ const years = [...groupBy(posts, (p) => [p.data.date.getUTCFullYear()])];
 <Base title="归档">
   <article class="card">
     <h1 class="post-title">归档</h1>
-    <p class="meta">共 {posts.length} 篇</p>
+    <p class="meta">共 {posts.length} 篇 · 日期为 UTC</p>
     {
       years.map(([year, list]) => (
         <section>

@@ -4,6 +4,7 @@ import { clientIp, json } from '../../../lib/http';
 import { submitComment, toPublic } from '../../../lib/comments/service';
 import { listPublished } from '../../../lib/comments/store';
 import { getThreads } from '../../../lib/comments/threads';
+import { isAiEnabled } from '../../../lib/comments/ai';
 
 export const prerender = false;
 
@@ -39,6 +40,8 @@ export const POST: APIRoute = async ({ request, url }) => {
     ip: clientIp(request),
     userAgent: request.headers.get('user-agent'),
     threadExists: async (id) => id in (await getThreads(env, url)),
+    ai: isAiEnabled(env) ? env.AI : null,
+    postTitle: async (id) => (await getThreads(env, url))[id]?.title,
   });
 
   if (result.status === 400) return json({ errors: result.errors }, { status: 400 });

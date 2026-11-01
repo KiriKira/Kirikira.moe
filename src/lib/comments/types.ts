@@ -15,6 +15,9 @@ export interface CommentRow {
   ip_hash: string | null;
   user_agent: string | null;
   pow_nonce: string | null;
+  ai_spam: number | null;
+  ai_kind: string | null;
+  ai_checked_at: string | null;
   created_at: string;
   legacy_id: number | null;
 }

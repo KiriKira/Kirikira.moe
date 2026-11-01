@@ -7,9 +7,10 @@ const { current, who } = Astro.props;
 ---
 
 <nav class="admin-nav card">
-  <a href="/admin/comments" aria-current={current === 'comments' ? 'page' : undefined}>评论</a>
-  <a href="/admin/rules" aria-current={current === 'rules' ? 'page' : undefined}>过滤规则</a>
-  <a href="/admin/">写文章 (CMS)</a>
+  <a href="/admine/comments" aria-current={current === 'comments' ? 'page' : undefined}>评论</a>
+  <a href="/admine/rules" aria-current={current === 'rules' ? 'page' : undefined}>过滤规则</a>
+  <a href="/admine/">写文章 (CMS)</a>
+  <a href="/" target="_blank">查看网站 ↗</a>
   <span class="who">{who}</span>
 </nav>
 

@@ -28,7 +28,22 @@ export const WEIGHTS = {
   builtinKeyword: 50,
   shortenerOrSpamTld: 40,
   mostlyCyrillic: 40,
+  aiSpam: 100, // Clef-flash says spam with p >= AI_SPAM_HIGH
+  aiMaybe: 50, // AI_SPAM_MAYBE <= p < AI_SPAM_HIGH: only counts together with other signals
+  aiHam: -30, // p <= AI_HAM: rescues e.g. an English comment with a couple of links
 } as const;
+
+export const AI_SPAM_HIGH = 0.85;
+export const AI_SPAM_MAYBE = 0.6;
+export const AI_HAM = 0.1;
+
+/**
+ * Reasons that settle a comment as spam before any AI is asked (and that the AI can't
+ * outvote): failed proof of work, honeypot, timing, IP burst, HTML/BBCode links.
+ */
+export function hasHardReason(reasons: string[]): boolean {
+  return reasons.some((r) => /^(honeypot|pow:|too-fast|ip-burst|html-or-bbcode-link)/.test(r));
+}
 
 export const BURST_PER_MINUTE = 3;
 export const FLOOD_PER_HOUR = 10;
@@ -53,6 +68,8 @@ export interface SpamSignals {
   ipHash: string | null;
   recentFromIp: { lastMinute: number; lastHour: number };
   duplicate: boolean;
+  /** Clef-flash spam probability, when it was asked. */
+  ai?: { spam: number; kind: string | null } | null;
 }
 
 export interface SpamVerdict {
@@ -152,6 +169,16 @@ export function judgeComment(input: CommentInput, signals: SpamSignals, rules: S
 
   for (const rule of rules) {
     if (ruleMatches(rule, input, hosts, signals.ipHash)) add(`rule:${rule.id}:${rule.kind}`, rule.weight);
+  }
+
+  const ai = signals.ai;
+  if (ai) {
+    const tag = `ai:${ai.spam.toFixed(2)}${ai.kind ? `:${ai.kind}` : ''}`;
+    if (ai.spam >= AI_SPAM_HIGH) add(tag, WEIGHTS.aiSpam);
+    else if (ai.spam >= AI_SPAM_MAYBE) add(tag, WEIGHTS.aiMaybe);
+    // The AI may forgive soft heuristics, never hard checks or the admin's own rules.
+    else if (ai.spam <= AI_HAM && !hasHardReason(reasons) && !reasons.some((r) => r.startsWith('rule:'))) add(tag, WEIGHTS.aiHam);
+    else reasons.push(tag);
   }
 
   return { isSpam: score >= SPAM_THRESHOLD, score, reasons };

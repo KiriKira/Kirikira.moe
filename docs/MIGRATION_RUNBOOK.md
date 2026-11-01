@@ -94,7 +94,7 @@ git commit -m "content: migrate posts from Django database"
 ```sh
 npx wrangler d1 create kirikira
 # 把输出的 database_id 填进 wrangler.jsonc 的 d1_databases[0].database_id（替换全 0 占位）
-npm run db:migrate:remote          # 建表
+npm run db:migrate:remote          # 建表（含 0002：AI 打分字段；以后新增 migration 也是这条命令）
 npx wrangler d1 execute kirikira --remote --file data/comments.sql    # 导入旧评论（可重复执行）
 npx wrangler d1 execute kirikira --remote --command "SELECT COUNT(*) FROM comments"
 # ↑ 应等于报告里的 "comments exported to SQL"
@@ -120,13 +120,15 @@ npm run check-urls -- https://kirikira-moe.<account>.workers.dev
 ### 6.3 管理后台保护（Cloudflare Access，必须做）
 
 Zero Trust → Access → Applications → Add → Self-hosted：
-- 域名：`kirikira.moe`，路径分别加 `admin/*` 和 `api/admin/*`（同一个应用里加两个目标）。
+- 域名：`kirikira.moe`，路径加 `admine` 和 `admine/*`（同一个应用里加两个目标）。整个后台（CMS、评论管理、过滤规则、后台接口）都在 `/admine` 下。
 - Policy：Allow，Include → Emails → 站长邮箱。
 - 创建后复制 **Application Audience (AUD) Tag**。
 - 把 team 域名（如 `kiri.cloudflareaccess.com`）和 AUD 填进 `wrangler.jsonc` 的 `vars.ACCESS_TEAM_DOMAIN` / `vars.ACCESS_AUD`，提交并重新部署。
 
-未配置这两个变量时，生产环境的 `/admin/comments` 一律 403（安全默认），本地 `npm run dev` 则直接放行。
-注意 `*.workers.dev` 域名不在 Access 保护下，但 Worker 自己会校验 Access JWT，所以那里的后台同样是 403。
+未登录的访问者在 `/admine` 下看到的是普通 404 页（爬虫看不出有后台）。未配置这两个变量时，生产环境的后台对所有人都是 404（安全默认），本地 `npm run dev` 则直接放行。
+注意 `*.workers.dev` 域名不在 Access 保护下，但 Worker 自己会校验 Access JWT，所以那里的后台同样是 404。
+
+预览站（workers.dev，装不了 Access）：`openssl rand -hex 24 | npx wrangler secret put ADMIN_TOKEN`，然后打开一次 `/admine/?token=<这个值>`，之后靠 cookie 保持登录 30 天。**正式站不要设置 ADMIN_TOKEN。**
 
 ### 6.4 切换域名
 
@@ -146,7 +148,7 @@ Zero Trust → Access → Applications → Add → Self-hosted：
 ### 7.1 登录 CMS
 
 1. GitHub → Settings → Developer settings → Fine-grained token：仅本仓库，权限 Contents: Read and write。
-2. 打开 `https://kirikira.moe/admin/`（受 Access 保护），选择用 token 登录。
+2. 打开 `https://kirikira.moe/admine/`（受 Access 保护），选择用 token 登录。CMS 左下角的浮动条可以直接跳到「评论管理」「过滤规则」（同一次登录）。
 3. 新建文章时填英文 slug（成为 `/post/<slug>/`，保存后锁定不可改）；保存即提交到 `main`，Workers Builds 约 1–2 分钟后上线。
 4. 草稿：勾选「草稿」，线上不会显示，`npm run dev` 里能看到。
 
@@ -162,11 +164,20 @@ Zero Trust → Access → Applications → Add → Self-hosted：
       "AllowedHeaders": ["*"], "ExposeHeaders": ["ETag"], "MaxAgeSeconds": 3000 }]
    ```
 4. R2 → Manage API Tokens → Create：权限 **Object Read & Write**，只限 `kirikira-media` 桶。
-5. 把 **Access Key ID** 和 **Account ID** 填进 `public/admin/config.yml` 的 `media_libraries.cloudflare_r2`（替换 `REPLACE_WITH_…`）并提交。
+5. 把 **Access Key ID** 和 **Account ID** 填进 `public/admine/config.yml` 的 `media_libraries.cloudflare_r2`（替换 `REPLACE_WITH_…`）并提交。
    **Secret Access Key 不要写进任何文件**：第一次在 CMS 里用 R2 上传时它会提示输入，只存在你的浏览器里。
 
 （可选）迁移脚本默认把旧文章的图片放进 `public/uploads/legacy/`（进 git，约几十张，问题不大）。想统一放 R2：
 `npx wrangler r2 object put kirikira-media/legacy/<文件名> --file public/uploads/legacy/<文件名> --remote` 逐个上传后，把文章里的 `/uploads/legacy/` 替换成 `https://media.kirikira.moe/legacy/`。
+
+### 7.3 AI 反垃圾（Workers AI · Clef-flash）
+
+`wrangler.jsonc` 里已绑定 `AI`，部署后自动生效，免费额度足够（每条评论约 1–2 Neuron，免费 10,000 Neuron/天）：
+
+- 新评论：通过隐形计算验证、蜜罐、时间检查后，交给 Clef-flash 判断，结果和规则分数叠加（见 README「评论反垃圾」）。
+- 旧评论：打开 `/admine/comments`，点「AI 重新检查公开评论」，会分批检查所有还没被 AI 看过的公开评论（迁移来的旧评论都在内），判为垃圾的移到「垃圾」列表，可以随时恢复。每次点击后会自动跑完全部批次。
+- 关闭：把 `vars.AI_SPAM_CHECK` 改成 `"off"`。
+- 本地开发（`npm run dev` / `wrangler dev --local`）没有 AI，只按规则判。
 
 ## 8. 收尾
 

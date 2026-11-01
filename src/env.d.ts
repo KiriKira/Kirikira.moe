@@ -8,6 +8,11 @@ interface Env {
   COMMENT_SECRET: string;
   ACCESS_TEAM_DOMAIN: string;
   ACCESS_AUD: string;
+  /** Preview-only admin login secret (see src/lib/access.ts). */
+  ADMIN_TOKEN?: string;
+  /** Workers AI binding (Clef-flash spam scoring). */
+  AI?: Ai;
+  AI_SPAM_CHECK?: string;
   SPAM_RETENTION_DAYS: string;
 }
 

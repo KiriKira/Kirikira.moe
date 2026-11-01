@@ -2,7 +2,6 @@
 import { Picture } from 'astro:assets';
 import '../styles/global.css';
 import Sidebar from '../components/Sidebar.astro';
-import ThemeToggle from '../components/ThemeToggle.astro';
 import banner from '../assets/banner.jpg';
 import { SITE } from '../site';
 
@@ -23,12 +22,6 @@ const fullTitle = title ? `${title} | ${SITE.title}` : `It's me, Kiri! | ${SITE.
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const imageUrl = new URL(image, Astro.site);
 const year = new Date().getFullYear();
-const path = Astro.url.pathname;
-const NAV = [
-  { href: '/', label: '首页', active: path === '/' || path.startsWith('/page/') },
-  { href: '/archives/', label: '归档', active: path.startsWith('/archives') },
-  { href: '/rss.xml', label: 'RSS', active: false },
-];
 ---
 
 <!doctype html>
@@ -64,32 +57,20 @@ const NAV = [
   <body>
     <a class="skip-link" href="#main">跳到正文</a>
     <header class="site-header">
-      <div class="banner" aria-hidden="true">
-        <Picture
-          src={banner}
-          alt=""
-          formats={['avif', 'webp']}
-          widths={[640, 960, 1280, 1920]}
-          sizes="100vw"
-          loading="eager"
-          fetchpriority="high"
-        />
-      </div>
       <div class="container identity">
-        <div class="identity-text">
-          <a class="site-title shake" href="/" title={`${SITE.title} - ${SITE.tagline}`}>{SITE.title}</a>
-          <a class="site-tagline shake" href="/" title={`${SITE.title} - ${SITE.tagline}`}>{SITE.tagline}</a>
+        <div class="banner" aria-hidden="true">
+          <Picture
+            src={banner}
+            alt=""
+            formats={['avif', 'webp']}
+            widths={[400, 720, 1008, 1440, 1920]}
+            sizes="(min-width: 993px) 70vw, (min-width: 601px) 85vw, 270px"
+            loading="eager"
+            fetchpriority="high"
+          />
         </div>
-        <nav class="site-nav" aria-label="主导航">
-          {
-            NAV.map((n) => (
-              <a href={n.href} aria-current={n.active ? 'page' : undefined}>
-                {n.label}
-              </a>
-            ))
-          }
-          <ThemeToggle />
-        </nav>
+        <a class="site-title shake" href="/" title={`${SITE.title} - ${SITE.tagline}`}>{SITE.title}</a>
+        <a class="site-tagline shake" href="/" title={`${SITE.title} - ${SITE.tagline}`}>{SITE.tagline}</a>
       </div>
     </header>
 
@@ -115,10 +96,12 @@ const NAV = [
 
     <footer class="site-footer">
       <div class="container">
-        <p>Copyright © {SITE.since}-{year} {SITE.author}.</p>
         <p>
-          Theme inspired by <a href="http://mythem.es/" target="_blank" rel="noopener">myThem.es</a>. Powered by{' '}
-          <a href="https://astro.build/" target="_blank" rel="noopener">Astro</a>{' '}&amp;{' '}
+          Copyright © {SITE.since}-{year} {SITE.author}. Designed by{' '}
+          <a href="http://mythem.es/" target="_blank" rel="noopener">myThem.es</a>.
+        </p>
+        <p>
+          Powered by <a href="https://astro.build/" target="_blank" rel="noopener">Astro</a>,{' '}
           <a href="https://www.cloudflare.com/" target="_blank" rel="noopener">Cloudflare</a>.
         </p>
       </div>
