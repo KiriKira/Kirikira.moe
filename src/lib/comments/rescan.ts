@@ -33,8 +33,10 @@ const NEUTRAL: SpamSignals = {
 
 async function scanOne(db: D1Database, row: CommentRow, ai: Ai | null, rules: SpamRule[], posts: PostContext) {
   const post = posts[row.post_id];
+  const history = ai ? await store.authorRecent(db, { email: row.email ?? '', name: row.name }, row.id) : undefined;
   const result: AiResult | null = ai
     ? await aiSpamCheck(ai, {
+        history,
         name: row.name,
         url: row.url ?? '',
         email: row.email ?? '',
@@ -44,8 +46,7 @@ async function scanOne(db: D1Database, row: CommentRow, ai: Ai | null, rules: Sp
       })
     : null;
   const input = { postId: row.post_id, parentId: row.parent_id, name: row.name, email: row.email ?? '', url: row.url ?? '', body: row.body };
-  const authorHistory = await store.authorHistory(db, { email: input.email, name: input.name }, row.id);
-  const verdict = judgeComment(input, { ...NEUTRAL, ipHash: row.ip_hash, ai: result, authorHistory }, rules);
+  const verdict = judgeComment(input, { ...NEUTRAL, ipHash: row.ip_hash, ai: result }, rules);
   return { row, result, verdict };
 }
 
@@ -73,7 +74,7 @@ export async function rescanBatch(
   for (const { row, result, verdict } of scanned) {
     if (verdict.isSpam) flagged++;
     await store.saveScan(db, row.id, {
-      aiSpam: result?.spam ?? null,
+      aiSpam: result ? 1 - result.reader : null,
       aiKind: result?.kind ?? null,
       spam: verdict.isSpam,
       score: verdict.score,

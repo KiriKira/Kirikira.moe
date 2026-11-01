@@ -219,16 +219,6 @@ const sqlLines = [
 ];
 let importedComments = 0;
 let spamComments = 0;
-// Same author key as store.authorHistory(): email, or name when there's no email.
-const CJK = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af]/;
-const authorKey = (c: CommentRow) => (c.email?.trim() ? `e:${c.email.trim().toLowerCase()}` : `n:${(c.name ?? '').trim()}`);
-const nonCjkByAuthor = new Map<string, number>();
-const totalByAuthor = new Map<string, number>();
-for (const c of comments) {
-  const k = authorKey(c);
-  totalByAuthor.set(k, (totalByAuthor.get(k) ?? 0) + 1);
-  if (!CJK.test(c.text ?? '')) nonCjkByAuthor.set(k, (nonCjkByAuthor.get(k) ?? 0) + 1);
-}
 const orphanComments: number[] = [];
 const commentsPerPost = new Map<number, number>();
 for (const c of comments) {
@@ -251,10 +241,6 @@ for (const c of comments) {
       ipHash: null,
       recentFromIp: { lastMinute: 0, lastHour: 0 },
       duplicate: false,
-      authorHistory: {
-        others: (totalByAuthor.get(authorKey(c)) ?? 1) - 1,
-        othersNonCjk: (nonCjkByAuthor.get(authorKey(c)) ?? 0) - (CJK.test(c.text ?? '') ? 0 : 1),
-      },
     },
   );
   if (verdict.isSpam) spamComments++;

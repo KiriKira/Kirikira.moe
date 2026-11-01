@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countBareDomains, countLinks, extractHosts, fingerprintBody, hasHardReason, judgeComment, MIN_FILL_MS, type SpamSignals } from '../src/lib/comments/spam';
+import { countBareDomains, countLinks, extractHosts, fingerprintBody, hasHardReason, isHarmlessReaction, judgeComment, MIN_FILL_MS, type SpamSignals } from '../src/lib/comments/spam';
 import type { CommentInput, SpamRule } from '../src/lib/comments/types';
 
 const input = (over: Partial<CommentInput> = {}): CommentInput => ({
@@ -70,8 +70,10 @@ describe('judgeComment', () => {
     expect(v.reasons).toEqual(expect.arrayContaining(['links:2', 'no-cjk-with-link']));
   });
 
-  it('flags link floods on spammy TLDs even in Chinese', () => {
-    expect(judgeComment(input({ body: '看这里 https://a.xyz https://b.xyz https://c.xyz' }), signals()).isSpam).toBe(true);
+  it('does not judge by TLD: three links in a Chinese comment need another signal', () => {
+    const c = input({ body: '看这里 https://a.xyz https://b.fun https://c.site' });
+    expect(judgeComment(c, signals()).isSpam).toBe(false);
+    expect(judgeComment(c, signals({ ai: { reader: 0.3, kind: 'promotion' } })).isSpam).toBe(true);
   });
 
   it('flags a domain-like name together with an English link body', () => {
@@ -120,31 +122,39 @@ describe('helpers', () => {
   });
 });
 
-describe('AI signal (Clef-flash)', () => {
-  const ai = (spam: number, kind: string | null = null) => ({ spam, kind });
+describe('AI signal (Clef-flash: P(real reader))', () => {
+  const ai = (reader: number, kind = 'reader') => ({ reader, kind });
 
-  it('marks spam when the model is confident', () => {
-    const v = judgeComment(input(), signals({ ai: ai(0.93, 'ad') }));
+  it('marks spam when the model is confident it is not a reader', () => {
+    const v = judgeComment(input({ body: 'Check our new tool, it is great.' }), signals({ ai: ai(0.08, 'promotion') }));
     expect(v.isSpam).toBe(true);
-    expect(v.reasons).toContain('ai:0.93:ad');
+    expect(v.reasons).toContain('ai:reader=0.08:promotion');
   });
 
-  it('only counts "maybe" together with other signals', () => {
-    expect(judgeComment(input(), signals({ ai: ai(0.7) })).isSpam).toBe(false);
-    const withLink = input({ body: 'Nice post https://shop.example.com' }); // no-cjk-with-link: 60
-    expect(judgeComment(withLink, signals({ ai: ai(0.7) })).isSpam).toBe(true);
+  it('only counts doubt together with another signal', () => {
+    expect(judgeComment(input({ body: 'Check our new tool, it is great.' }), signals({ ai: ai(0.3, 'template') })).isSpam).toBe(false);
+    const withLink = input({ body: 'Nice post', url: 'https://shop.example.com' }); // no-cjk-with-link: 60
+    expect(judgeComment(withLink, signals({ ai: ai(0.3, 'promotion') })).isSpam).toBe(true);
   });
 
-  it('lets a confident "normal" rescue soft heuristics', () => {
+  it('lets a confident "reader" rescue soft heuristics', () => {
     const body = 'Thanks! See https://github.com/a and https://github.com/b';
     expect(judgeComment(input({ body }), signals()).isSpam).toBe(true);
-    expect(judgeComment(input({ body }), signals({ ai: ai(0.03, 'normal') })).isSpam).toBe(false);
+    expect(judgeComment(input({ body }), signals({ ai: ai(0.95) })).isSpam).toBe(false);
   });
 
   it('never outvotes hard checks or admin rules', () => {
-    expect(judgeComment(input(), signals({ honeypot: 'x', ai: ai(0.01) })).isSpam).toBe(true);
+    expect(judgeComment(input(), signals({ honeypot: 'x', ai: ai(0.99) })).isSpam).toBe(true);
     const ban = rule({ kind: 'keyword', pattern: '学到了' });
-    expect(judgeComment(input(), signals({ ai: ai(0.01) }), [ban]).isSpam).toBe(true);
+    expect(judgeComment(input(), signals({ ai: ai(0.99) }), [ban]).isSpam).toBe(true);
+  });
+
+  it('protects harmless reactions unless the model is near-certain', () => {
+    for (const body of ['=W=', '好耶', '233333', 'thx!']) {
+      expect(isHarmlessReaction(input({ body }))).toBe(true);
+      expect(judgeComment(input({ body }), signals({ ai: ai(0.1, 'template') })).isSpam).toBe(false);
+    }
+    expect(isHarmlessReaction(input({ body: 'Hi, I wanted to know your price.' }))).toBe(false);
   });
 
   it('recognises hard reasons', () => {
@@ -157,55 +167,37 @@ describe('AI signal (Clef-flash)', () => {
 describe('legacy spam samples and false positives', () => {
   const old = (name: string, url: string, body: string, email = '') => input({ name, url, body, email });
   const neutral = signals({ ipHash: null });
+  const notReader = (kind: string) => signals({ ipHash: null, ai: { reader: 0.1, kind } });
+  const doubtful = (kind: string) => signals({ ipHash: null, ai: { reader: 0.3, kind } });
 
-  const SPAM = [
-    old('SEOSolutionVIP Fiverr', 'http://steeldirectory.homedirectory.biz/details.php?id=306965',
-      'Wnr.ai is a creative AI tool that generates thought-provoking prompts to ignite your imagination.', 'hoseagrissom@att.net'),
-    old('buy potentstream', 'https://www.quora.com/profile/Rajiv-Ranjan-Kumar-114/PotentStream-Supplements-A-Comprehensive-Review',
-      'I have been exploring for a little for any high-quality articles or weblog posts in this kind of house .\nExploring in Yahoo I eventually stumbled upon this site.\nStudying this information So i\'m happy to express that I have an incredibly just right uncanny feeling I found out exactly what I needed.',
-      'kylestowers@orange.fr'),
-    old('Melvingob', 'https://dailyheraldnewstoday.com',
-      "Top News Sites for article Post\n\nchinaworldnewstoday.com\nchroniclenewstoday.com\ncnbcnewstoday.com\ncnnworldtoday.com\ncrunchbasenewstoday.com\ndailyexpressnewstoday.com\n\nDon't hesiate to conatct us.",
-      'salina.desuza@eunews24x7.com'),
-    old('Raymondtaipt', 'https://rtnewstoday.com',
-      'News Sites for article post\n\nnytimesnewstoday.com\noxfordnewstoday.com\nportugalnewstoday.com\npostgazettenewstoday.com\nrepublicofchinatoday.com\nreuterstoday.com\n\nDont hesiate to contact us',
-      'desuzajohn@eunews24x7.com'),
-    old('online casino', 'https://1winchile-casino.xyz',
-      "Attractive section of content. I just stumbled upon your website and in accession capital to assert that I acquire in fact enjoyed account your blog posts. Anyway I'll be subscribing to your feeds or even I achievement you get admission to constantly fast.",
-      'curt_frei@yahoo.com'),
-    old('Douglasideri', 'https://thequintnewstoday.com',
-      'Top Sites for article Post\n\ntheheraldnewstoday.com\ntheindependentnewstoday.com\ntheirishtimesnewstoday.com\ntheirishtimestoday.com\nthemetronewstoday.com\nthemirrornewstoday.com\n\nDont hasiate to contact us',
-      'dzonothoan@eunews24x7.com'),
-  ];
-
-  it.each(SPAM.map((c) => [c.name, c]))('catches "%s" by rules alone', (_, c) => {
+  // Link spam is structural: caught without any AI (the fallback when it's unavailable).
+  it.each([
+    old('Melvingob', 'https://dailyheraldnewstoday.com', "Top News Sites for article Post\n\nchinaworldnewstoday.com\nchroniclenewstoday.com\ncnbcnewstoday.com\ncnnworldtoday.com\n\nDon't hesiate to conatct us."),
+    old('Douglasideri', 'https://thequintnewstoday.com', 'Top Sites for article Post\n\ntheheraldnewstoday.com\ntheindependentnewstoday.com\ntheirishtimesnewstoday.com\n\nDont hasiate to contact us'),
+    old('online casino', 'https://1winchile-casino.xyz', 'Attractive section of content. I just stumbled upon your website and enjoyed account your blog posts.'),
+  ])('catches link spam by rules alone: $name', (c) => {
     expect(judgeComment(c, neutral).isSpam).toBe(true);
   });
 
-  // The multilingual "price" bot: one author, no links, a new language every time.
-  const robert = (body: string) => old('RobertFoumb', '', body, 'lucido.leinteract@gmail.com');
-  const robertHistory = { others: 8, othersNonCjk: 8 };
+  // Spam by meaning: the rules alone can't (and shouldn't) tell; the AI verdict decides.
+  it.each([
+    [old('SEOSolutionVIP Fiverr', 'http://steeldirectory.homedirectory.biz/details.php?id=306965', 'Wnr.ai is a creative AI tool that generates thought-provoking prompts to ignite your imagination.'), 'promotion'],
+    [old('buy potentstream', 'https://www.quora.com/profile/x/PotentStream-Supplements-A-Comprehensive-Review', 'I have been exploring for a little for any high-quality articles or weblog posts in this kind of house. Exploring in Yahoo I eventually stumbled upon this site.'), 'promotion'],
+    [old('Stevenhut', 'https://taj.bkinf0-123.site', "don't think anything"), 'template'],
+    [old('FrbetPounk', 'https://betrfa.bking.site', 'interesting for a very long time'), 'template'],
+  ] as const)('with a website, even AI doubt is enough: %s', (c, kind) => {
+    expect(judgeComment(c, doubtful(kind)).isSpam).toBe(true);
+  });
+
   it.each([
     'Szia, meg akartam tudni az árát.',
     'Hi, ego volo scire vestri pretium.',
-    'Dia duit, theastaigh uaim do phraghas a fháil.',
     'Hi, I wanted to know your price.',
-    'Hi, kam dashur të di çmimin tuaj',
     'Zdravo, htio sam znati vašu cijenu.',
-  ])('catches the price bot: "%s"', (body) => {
-    expect(judgeComment(robert(body), signals({ ipHash: null, authorHistory: robertHistory })).isSpam).toBe(true);
-  });
-
-  it('catches the price bot on its first visit when the AI calls it a sales message', () => {
-    const v = judgeComment(robert('Hi, I wanted to know your price.'), signals({ ipHash: null, ai: { spam: 0.35, kind: 'normal', sales: 0.9 } }));
-    expect(v.isSpam).toBe(true);
-  });
-
-  it.each([
-    old('Stevenhut', 'https://taj.bkinf0-123.site', "don't think anything", 'aq40aqa@rambler.ru'),
-    old('FrbetPounk', 'https://betrfa.bking.site', 'interesting for a very long time', 'aq26aqa@rambler.ru'),
-  ])('catches nonsense with a spam-TLD website: $name', (c) => {
-    expect(judgeComment(c, neutral).isSpam).toBe(true);
+  ])('the multilingual price bot is caught once the AI rules out a reader: "%s"', (body) => {
+    const c = old('RobertFoumb', '', body, 'lucido.leinteract@gmail.com');
+    expect(judgeComment(c, neutral).isSpam).toBe(false);
+    expect(judgeComment(c, notReader('template')).isSpam).toBe(true);
   });
 
   const GOOD = [
@@ -219,23 +211,26 @@ describe('legacy spam samples and false positives', () => {
     old('Best', '', '这篇太好笑了 hhh'),
     old('Online Judge 爱好者', '', '请问 V2Ray 的 MITM 配置在新版本还能用吗？'),
     old('Tom', '', "What's the price of that VPS you mentioned?"),
-    old('Amélie', '', "Merci pour l'article, très utile !"),
-    old('Lena', '', 'Danke für den Artikel über Rime!'),
+    old('ゆう', '', '記事ありがとうございます！V2Rayの設定でずっと困っていました。'),
+    old('kaomoji', '', '(´Д`) 好惨 =ω= ヽ(°〇°)ﾉ'),
+    old('neo 喵', 'https://neo.fun', '哈哈哈哈 京都那家拉面我也去过'),
   ];
 
-  it.each(GOOD.map((c) => [c.body, c]))('never flags "%s", with or without AI', (_, c) => {
+  it.each(GOOD.map((c) => [c.body, c]))('rules alone never hide "%s"', (_, c) => {
     expect(judgeComment(c, neutral).isSpam).toBe(false);
-    // Even if the model wrongly calls a short harmless comment generic/commercial.
-    const shaky = { spam: 0.5, kind: null, generic: 0.95, commercial: 0.9, onTopic: 0.05 };
-    const harmless = !c.url && [...c.body].length <= 60 && countLinks(c.body) === 0 && (/\p{Script=Han}/u.test(c.body) || (c.body.match(/\p{L}/gu)?.length ?? 0) < 12);
-    if (harmless) expect(judgeComment(c, signals({ ipHash: null, ai: shaky })).isSpam).toBe(false);
   });
 
-  it('uses the AI side questions for payload-carrying comments', () => {
-    const c = old('Mike', 'https://mikes-blog.example', 'Interesting thoughts, thank you.'); // no-cjk-with-link: 60
-    expect(judgeComment(c, signals({ ai: { spam: 0.3, kind: null, commercial: 0.8 } })).isSpam).toBe(true);
-    expect(judgeComment(c, signals({ ai: { spam: 0.3, kind: null, generic: 0.9, onTopic: 0.1 } })).isSpam).toBe(true);
-    expect(judgeComment(c, signals({ ai: { spam: 0.3, kind: null, generic: 0.9, onTopic: 0.8 } })).isSpam).toBe(false);
+  it('hides comments written in a script the readers do not use', () => {
+    for (const body of ['Здравствуйте, я хотел узнать вашу цену.', 'مرحبا، أردت أن أعرف السعر', '안녕하세요, 가격을 알고 싶었습니다.']) {
+      expect(judgeComment(old('RobertFoumb', '', body), neutral).reasons).toContain('foreign-script');
+      expect(judgeComment(old('RobertFoumb', '', body), neutral).isSpam).toBe(true);
+    }
+  });
+
+  it('leaves Latin-script foreign languages to the AI (told that only zh/en/ja readers exist)', () => {
+    const c = old('Amélie', '', "Merci pour l'article, très utile !");
+    expect(judgeComment(c, neutral).isSpam).toBe(false);
+    expect(judgeComment(c, notReader('template')).isSpam).toBe(true);
   });
 
   it('counts bare domains but not ones inside URLs', () => {

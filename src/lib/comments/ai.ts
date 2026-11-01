@@ -1,16 +1,26 @@
 /**
- * Spam scoring with Cloudflare's Clef-flash decision model on Workers AI.
+ * Spam judgement with Cloudflare's Clef-flash decision model on Workers AI.
  *
- * Clef doesn't write text: it answers typed questions about a "state" with a probability
- * per option. One broad "is this spam?" question misses the usual blog spam (generic
- * praise with the link hidden in the website field, a list of bare domains, a keyword as
- * the name), so we ask several narrow questions and give it the context a human moderator
- * would look at: what the post is about and in which language, the commenter's website
- * and email domain, and simple facts about the comment. spam.ts combines the answers.
+ * Clef answers typed questions about a "state" with a probability per option. Lessons
+ * from the first versions of this file (and from the model's own docs: "be literal and
+ * specific"; answers stuck near 0.5 mean the question is ambiguous):
  *
- * Cost is input tokens only (3455 neurons per million): ~600 tokens per comment, so
- * ~2 neurons; the free 10,000 neurons/day covers thousands of comments. Only comments that
- * passed the proof of work / honeypot / timing checks get here.
+ *  - Ask ONE `choice` question with mutually exclusive, concretely described options.
+ *    Probabilities over the options sum to 1, so the model has to commit. Several
+ *    overlapping yes/no questions ("spam?", "generic?", "commercial?", "on topic?") each
+ *    landed around 50% and only added noise once combined with hand-made weights.
+ *  - Give it what a human moderator would look at, as a plain record: the post, the form
+ *    fields exactly as submitted, the comment, and the same author's other comments on the
+ *    site (bots reveal themselves across comments: "Hi, I wanted to know your price" in a
+ *    new language each time), and the blog's language policy (Chinese >> English > Japanese;
+ *    anything else is a bot). No pre-digested "facts" (link counts, guessed language
+ *    codes): they are noise and bias.
+ *
+ * Use scripts/eval/eval-spam.ts to measure changes to this prompt against real Workers AI.
+ *
+ * Cost is input tokens only (3455 neurons per million): a few hundred tokens per comment,
+ * ~1-2 neurons; the free 10,000 neurons/day covers thousands of comments. Only comments
+ * that passed the proof of work / honeypot / timing checks are sent.
  *
  * https://developers.cloudflare.com/workers-ai/models/clef-flash/
  */
@@ -19,27 +29,19 @@ export const AI_MODEL = '@cf/cloudflare/clef-flash';
 const TIMEOUT_MS = 6000;
 
 export const AI_KINDS = {
-  normal: '正常评论',
-  ad: '广告推广',
-  seo: 'SEO 外链',
-  scam: '诈骗/博彩/色情/贷款',
-  gibberish: '无意义内容',
-  abuse: '辱骂/骚扰',
+  reader: '真实读者',
+  promotion: '推广/外链',
+  template: '群发模板/套话',
+  scam: '诈骗/违规',
 } as const;
 export type AiKind = keyof typeof AI_KINDS;
 
 export interface AiResult {
-  /** P(spam): promotion, link building, scams. */
-  spam: number;
-  kind: AiKind | null;
-  /** P(boilerplate that could sit under any article on any site). */
-  generic?: number;
-  /** P(name / website / email look like a business, product or keyword, not a person). */
-  commercial?: number;
-  /** P(the comment relates to this post or the blog's subjects). */
-  onTopic?: number;
-  /** P(sales inquiry / business message, e.g. "I wanted to know your price"). */
-  sales?: number;
+  /** P(written by a real reader of this post). */
+  reader: number;
+  /** Most likely option. */
+  kind: AiKind;
+  probabilities: Record<AiKind, number>;
 }
 
 export interface AiInput {
@@ -49,102 +51,92 @@ export interface AiInput {
   body: string;
   postTitle?: string;
   postExcerpt?: string;
+  /** The same author's other comments on the site (newest first), with the total count. */
+  history?: { total: number; samples: string[] };
 }
 
-const CJK_RE = /[぀-ヿ㐀-䶿一-鿿가-힯]/;
-const LINK_RE = /\bhttps?:\/\/\S+|\bwww\.\S+|\b[a-z0-9-]+\.(?:com|net|org|info|biz|xyz|top|io|ai|co|me|site|online|shop|store|app|news|ru|cn)\b/gi;
-
-function host(url: string): string {
-  try {
-    return new URL(/^https?:\/\//i.test(url) ? url : `http://${url}`).hostname;
-  } catch {
-    return '';
-  }
-}
-
-/** The structured "state" Clef reads. Exported for tests. */
-export function buildState(input: AiInput) {
-  return {
-    blog: 'kirikira.moe — a personal blog written in Chinese by one person (Linux, networking and proxies, anime, games, daily life)',
-    post: { title: input.postTitle ?? '', summary: input.postExcerpt ?? '' },
-    commenter: {
-      name: input.name,
-      website: input.url || '(none)',
-      website_domain: input.url ? host(input.url) : '(none)',
-      email_domain: input.email?.includes('@') ? input.email.split('@').pop()!.toLowerCase() : '(none)',
-    },
-    comment: input.body.slice(0, 4000),
-    facts: {
-      comment_language: CJK_RE.test(input.body) ? 'Chinese/Japanese/Korean' : 'not Chinese',
-      comment_characters: [...input.body.trim()].length,
-      links_or_domains_in_comment: input.body.match(LINK_RE)?.length ?? 0,
-    },
-  };
-}
-
-export const QUESTIONS = {
-  spam: {
-    type: 'noul',
-    instructions:
-      'Is this comment spam? Spam = posted to promote a product, service, website or link (including SEO ' +
-      'link building through the commenter website field), or a scam, gambling, adult, loan or crypto pitch, ' +
-      'rather than a real reader reacting to this post. Blog spam is often vague flattery in English under a ' +
-      'Chinese post, with the real payload in the website field or a list of domains. Short friendly replies, ' +
-      'emoticons such as "=W=" or "233", thanks and questions from readers are NOT spam.',
-  },
-  generic: {
-    type: 'noul',
-    instructions:
-      'Is the comment generic boilerplate that could be pasted under any article on any website ' +
-      '(e.g. "I stumbled upon your site", "great post, keep it up", "high-quality articles"), with nothing ' +
-      'specific to this post? A very short emoticon or one-word reaction is not boilerplate.',
-  },
-  commercial: {
-    type: 'noul',
-    instructions:
-      "Do the commenter's name, website or email domain look like a business, product, marketing keyword " +
-      '(e.g. "buy xxx", "online casino", "SEO Fiverr") or commercial/SEO site, rather than a person\'s ' +
-      'nickname and personal page or a well-known platform profile?',
-  },
-  onTopic: {
-    type: 'noul',
-    instructions: "Does the comment relate to this post's title or summary, or to the blog's subjects?",
-  },
-  sales: {
-    type: 'noul',
-    instructions:
-      'Is this a sales or business message rather than a reader comment: asking for a price or quote, ' +
-      'offering services, or a message that would only make sense sent to a company (often in a language ' +
-      'unrelated to the post, e.g. "Hi, I wanted to know your price")?',
-  },
-  kind: {
-    type: 'choice',
-    instructions: 'What kind of comment is this?',
-    criteria: {
-      normal: 'A genuine reader comment, reaction, question or reply (including short ones and emoticons)',
-      ad: 'Advertising or promotion of a product, service, shop, tool or channel',
-      seo: 'Posted mainly to place links or domains for search ranking',
-      scam: 'Scam, phishing, gambling, porn, loans, or crypto/investment pitch',
-      gibberish: 'Random characters or meaningless machine-generated text',
-      abuse: 'Insults, harassment or hate',
-    },
+export const VERDICT_QUESTION = {
+  type: 'choice',
+  instructions:
+    'Who wrote this comment, and why? Judge from the comment together with the name, email and ' +
+    'website fields, the language it is written in, the post it was left under, and the same author\'s other comments.',
+  criteria: {
+    reader:
+      'A person who actually read this blog, writing to the author or other readers in Chinese, English or ' +
+      'Japanese: reacting to the post, asking or answering a question, thanking, joking or chatting. Any length; ' +
+      'short replies and emoticons such as "=W=" or "233" count. Linking their own site or a relevant resource is fine.',
+    promotion:
+      'Advertising: the comment exists to promote a product, service, shop, tool, channel or website, or to ' +
+      'place backlinks for search ranking (often through the website field, a keyword used as the name, or a list of domains).',
+    template:
+      'Bot or mass-posted text that was not written for this post: generic flattery or filler that would fit under ' +
+      'any article on any website, word salad, a business message sent to many sites (for example asking for ' +
+      '"your price"), or any comment written in a language other than Chinese, English or Japanese.',
+    scam: 'Scams and illicit offers: gambling, porn, loans, crypto or investment schemes, phishing.',
   },
 } as const;
 
-type Noul = { type: 'noul'; noul: number };
-interface ClefResponse {
-  answers?: {
-    spam?: Noul;
-    generic?: Noul;
-    commercial?: Noul;
-    onTopic?: Noul;
-    sales?: Noul;
-    kind?: { type: 'choice'; choice: string; probabilities?: Record<string, number> };
-  };
+const quote = (s: string, max: number) => {
+  const t = s.trim().replace(/\s+\n/g, '\n');
+  return t.length > max ? `${t.slice(0, max)}…` : t;
+};
+
+/** The record Clef reads: what a moderator would see. Exported for tests and the eval script. */
+export function buildState(input: AiInput): string {
+  const lines = [
+    'A comment submitted on kirikira.moe, a personal blog written in Chinese by one person',
+    '(topics: Linux, networking and proxies, anime, games, daily life).',
+    'Its readers comment in Chinese (most of them), English (some) or Japanese (a few). Comments in any',
+    'other language (Russian, Hungarian, Latin, Croatian, Portuguese, French, ...) come from spam bots.',
+    '',
+    `Post: ${input.postTitle?.trim() || '(unknown)'}`,
+  ];
+  if (input.postExcerpt?.trim()) lines.push(`Post summary: ${quote(input.postExcerpt, 300)}`);
+  lines.push(
+    '',
+    'Comment form, as submitted:',
+    `Name: ${input.name}`,
+    `Email: ${input.email?.trim() || '(not given)'}`,
+    `Website: ${input.url?.trim() || '(not given)'}`,
+    'Comment:',
+    '<<<',
+    quote(input.body, 3000),
+    '>>>',
+  );
+  const h = input.history;
+  if (h && h.total > 0) {
+    lines.push('', `The same author's other comments on this blog: ${h.total}. Most recent:`);
+    for (const s of h.samples.slice(0, 3)) lines.push(`- "${quote(s, 200).replace(/\n/g, ' ')}"`);
+  } else {
+    lines.push('', 'This author has no other comments on this blog.');
+  }
+  return lines.join('\n');
 }
 
-const prob = (a: Noul | undefined) =>
-  a && typeof a.noul === 'number' && Number.isFinite(a.noul) ? Math.min(1, Math.max(0, a.noul)) : undefined;
+export function buildRequest(input: AiInput) {
+  return { model: 'clef-flash', state: buildState(input), questions: { verdict: VERDICT_QUESTION } };
+}
+
+interface ClefChoice {
+  type: 'choice';
+  choice: string;
+  probabilities?: Record<string, number>;
+}
+
+/** Parse a Clef response; null when it doesn't contain a usable verdict. */
+export function parseResponse(res: unknown): AiResult | null {
+  const verdict = (res as { answers?: { verdict?: ClefChoice } } | null)?.answers?.verdict;
+  const raw = verdict?.probabilities;
+  if (!raw) return null;
+  const probabilities = {} as Record<AiKind, number>;
+  for (const k of Object.keys(AI_KINDS) as AiKind[]) {
+    const p = raw[k];
+    if (typeof p !== 'number' || !Number.isFinite(p)) return null;
+    probabilities[k] = Math.min(1, Math.max(0, p));
+  }
+  const kind = (Object.keys(probabilities) as AiKind[]).reduce((a, b) => (probabilities[b] > probabilities[a] ? b : a));
+  return { reader: probabilities.reader, kind, probabilities };
+}
 
 export function isAiEnabled(env: Pick<Env, 'AI' | 'AI_SPAM_CHECK'>): boolean {
   return !!env.AI && (env.AI_SPAM_CHECK ?? 'on').toLowerCase() !== 'off';
@@ -152,22 +144,10 @@ export function isAiEnabled(env: Pick<Env, 'AI' | 'AI_SPAM_CHECK'>): boolean {
 
 /** Never throws: returns null when the model is unavailable, slow or returns nonsense. */
 export async function aiSpamCheck(ai: Ai, input: AiInput): Promise<AiResult | null> {
-  const request = { model: 'clef-flash', state: buildState(input), questions: QUESTIONS };
   try {
-    const run = (ai as unknown as { run: (model: string, body: unknown) => Promise<unknown> }).run(AI_MODEL, request);
+    const run = (ai as unknown as { run: (model: string, body: unknown) => Promise<unknown> }).run(AI_MODEL, buildRequest(input));
     const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), TIMEOUT_MS));
-    const res = (await Promise.race([run, timeout])) as ClefResponse | null;
-    const spam = prob(res?.answers?.spam);
-    if (spam === undefined) return null;
-    const choice = res?.answers?.kind?.choice;
-    return {
-      spam,
-      kind: choice && choice in AI_KINDS ? (choice as AiKind) : null,
-      generic: prob(res?.answers?.generic),
-      commercial: prob(res?.answers?.commercial),
-      onTopic: prob(res?.answers?.onTopic),
-      sales: prob(res?.answers?.sales),
-    };
+    return parseResponse(await Promise.race([run, timeout]));
   } catch {
     return null;
   }

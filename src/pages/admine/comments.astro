@@ -55,23 +55,15 @@ const REASON_LABEL: [RegExp, string][] = [
   [/^ip-(burst|flood)/, '同一 IP 短时间多次评论'],
   [/^html-or-bbcode-link/, 'HTML/BBCode 链接'],
   [/^links:/, '正文链接多'],
+  [/^bare-domains:/, '正文罗列域名'],
   [/^no-cjk-with-link/, '无中文且带链接/网址'],
   [/^url-in-name/, '昵称是网址'],
-  [/^commercial-name/, '昵称像广告词'],
-  [/^bare-domains:/, '正文罗列域名'],
-  [/^boilerplate/, '万能吹捧套话'],
-  [/^price-inquiry/, '询价（无中文）'],
-  [/^foreign-script/, '非中英文语种'],
-  [/^repeat-foreign-author:/, '同一作者多次发外语评论'],
-  [/^ai-sales:/, 'AI：询价/推销'],
-  [/^mostly-cyrillic/, '大量西里尔字母'],
+  [/^foreign-script/, '非中英日文字'],
   [/^duplicate/, '重复内容'],
   [/^keyword:/, '内置关键词'],
-  [/^shortener-or-spam-tld/, '短链/垃圾域名后缀'],
+  [/^shortener/, '短链接'],
   [/^rule:/, '自定义规则'],
-  [/^ai-commercial:/, 'AI：身份像商家/营销'],
-  [/^ai-generic:/, 'AI：与文章无关的套话'],
-  [/^ai:/, 'AI 垃圾概率'],
+  [/^ai:/, 'AI 判断'],
 ];
 const reasons = (json: string | null) => {
   try {
@@ -180,7 +172,7 @@ const reasons = (json: string | null) => {
                       <span class={`badge ${c.status}`}>{c.status === 'spam' ? '垃圾' : '公开'}</span>
                       {c.spam_score > 0 && <div class="muted">分数 {c.spam_score}</div>}
                       {c.ai_spam !== null && (
-                        <div class="muted" title="Clef-flash 判断为垃圾的概率">
+                        <div class="muted" title="Clef-flash：不是真实读者的概率">
                           AI {Math.round(c.ai_spam * 100)}%{kindLabel(c.ai_kind) && ` · ${kindLabel(c.ai_kind)}`}
                         </div>
                       )}
