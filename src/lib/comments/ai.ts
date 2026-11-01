@@ -38,6 +38,8 @@ export interface AiResult {
   commercial?: number;
   /** P(the comment relates to this post or the blog's subjects). */
   onTopic?: number;
+  /** P(sales inquiry / business message, e.g. "I wanted to know your price"). */
+  sales?: number;
 }
 
 export interface AiInput {
@@ -108,6 +110,13 @@ export const QUESTIONS = {
     type: 'noul',
     instructions: "Does the comment relate to this post's title or summary, or to the blog's subjects?",
   },
+  sales: {
+    type: 'noul',
+    instructions:
+      'Is this a sales or business message rather than a reader comment: asking for a price or quote, ' +
+      'offering services, or a message that would only make sense sent to a company (often in a language ' +
+      'unrelated to the post, e.g. "Hi, I wanted to know your price")?',
+  },
   kind: {
     type: 'choice',
     instructions: 'What kind of comment is this?',
@@ -129,6 +138,7 @@ interface ClefResponse {
     generic?: Noul;
     commercial?: Noul;
     onTopic?: Noul;
+    sales?: Noul;
     kind?: { type: 'choice'; choice: string; probabilities?: Record<string, number> };
   };
 }
@@ -156,6 +166,7 @@ export async function aiSpamCheck(ai: Ai, input: AiInput): Promise<AiResult | nu
       generic: prob(res?.answers?.generic),
       commercial: prob(res?.answers?.commercial),
       onTopic: prob(res?.answers?.onTopic),
+      sales: prob(res?.answers?.sales),
     };
   } catch {
     return null;

@@ -11,6 +11,7 @@ describe('aiSpamCheck', () => {
         generic: { type: 'noul', noul: 0.4 },
         commercial: { type: 'noul', noul: 0.88 },
         onTopic: { type: 'noul', noul: 0.1 },
+        sales: { type: 'noul', noul: 0.2 },
         kind: { type: 'choice', choice: 'scam', probabilities: {} },
       },
     }));
@@ -22,7 +23,7 @@ describe('aiSpamCheck', () => {
       postTitle: '我曾出现在你的梦里吗',
       postExcerpt: '本文使用 Rime 写作',
     });
-    expect(r).toEqual({ spam: 0.97, kind: 'scam', generic: 0.4, commercial: 0.88, onTopic: 0.1 });
+    expect(r).toEqual({ spam: 0.97, kind: 'scam', generic: 0.4, commercial: 0.88, onTopic: 0.1, sales: 0.2 });
     const [model, body] = (ai as any).run.mock.calls[0];
     expect(model).toBe(AI_MODEL);
     expect(body.model).toBe('clef-flash');
@@ -34,7 +35,7 @@ describe('aiSpamCheck', () => {
       email_domain: 'yahoo.com',
     });
     expect(body.state.facts).toEqual({ comment_language: 'not Chinese', comment_characters: 46, links_or_domains_in_comment: 2 });
-    expect(Object.keys(body.questions).sort()).toEqual(['commercial', 'generic', 'kind', 'onTopic', 'spam']);
+    expect(Object.keys(body.questions).sort()).toEqual(['commercial', 'generic', 'kind', 'onTopic', 'sales', 'spam']);
   });
 
   it('describes Chinese comments and missing fields plainly', () => {

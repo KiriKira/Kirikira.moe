@@ -61,10 +61,11 @@ export async function submitComment(raw: Record<string, unknown>, ctx: SubmitCon
   if (pow.status === 'ok' && pow.nonce && (await store.powNonceUsed(ctx.db, pow.nonce))) pow.status = 'replayed';
 
   const bodyFp = fingerprintBody(input.body);
-  const [recent, duplicate, rules] = await Promise.all([
+  const [recent, duplicate, rules, history] = await Promise.all([
     store.recentFromIp(ctx.db, ipHash, now),
     store.hasRecentDuplicate(ctx.db, bodyFp, now),
     store.listRules(ctx.db),
+    store.authorHistory(ctx.db, { email: input.email, name: input.name }),
   ]);
 
   const signals: SpamSignals = {
@@ -75,6 +76,7 @@ export async function submitComment(raw: Record<string, unknown>, ctx: SubmitCon
     ipHash,
     recentFromIp: recent,
     duplicate,
+    authorHistory: history,
   };
   let verdict = judgeComment(input, signals, rules);
 

@@ -31,7 +31,7 @@ const NEUTRAL: SpamSignals = {
   duplicate: false,
 };
 
-async function scanOne(row: CommentRow, ai: Ai | null, rules: SpamRule[], posts: PostContext) {
+async function scanOne(db: D1Database, row: CommentRow, ai: Ai | null, rules: SpamRule[], posts: PostContext) {
   const post = posts[row.post_id];
   const result: AiResult | null = ai
     ? await aiSpamCheck(ai, {
@@ -44,7 +44,8 @@ async function scanOne(row: CommentRow, ai: Ai | null, rules: SpamRule[], posts:
       })
     : null;
   const input = { postId: row.post_id, parentId: row.parent_id, name: row.name, email: row.email ?? '', url: row.url ?? '', body: row.body };
-  const verdict = judgeComment(input, { ...NEUTRAL, ipHash: row.ip_hash, ai: result }, rules);
+  const authorHistory = await store.authorHistory(db, { email: input.email, name: input.name }, row.id);
+  const verdict = judgeComment(input, { ...NEUTRAL, ipHash: row.ip_hash, ai: result, authorHistory }, rules);
   return { row, result, verdict };
 }
 
@@ -61,11 +62,11 @@ export async function rescanBatch(
   if (!rows.length) return { checked: 0, flagged: 0, next: null, remaining: 0, ai: !!ai };
 
   // Probe with the first row: if the model is down (or out of quota), carry on rules-only.
-  const first = await scanOne(rows[0], ai, rules, posts);
+  const first = await scanOne(db, rows[0], ai, rules, posts);
   const useAi = ai && first.result ? ai : null;
   const scanned = [first];
   for (let i = 1; i < rows.length; i += concurrency) {
-    scanned.push(...(await Promise.all(rows.slice(i, i + concurrency).map((r) => scanOne(r, useAi, rules, posts)))));
+    scanned.push(...(await Promise.all(rows.slice(i, i + concurrency).map((r) => scanOne(db, r, useAi, rules, posts)))));
   }
 
   let flagged = 0;

@@ -46,6 +46,25 @@ export async function hasRecentDuplicate(db: D1Database, bodyFp: string, now = D
   return !!row;
 }
 
+const CJK_RE = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af]/;
+
+/**
+ * The author's other comments (by email, or by name when there's no email): how many,
+ * and how many contained no CJK at all. Feeds the repeat-foreign-author rule.
+ */
+export async function authorHistory(
+  db: D1Database,
+  author: { email: string; name: string },
+  excludeId = 0,
+): Promise<{ others: number; othersNonCjk: number }> {
+  const byEmail = author.email.trim() !== '';
+  const { results } = await db
+    .prepare(`SELECT body FROM comments WHERE ${byEmail ? 'lower(email) = lower(?)' : 'name = ?'} AND id != ? ORDER BY id DESC LIMIT 50`)
+    .bind(byEmail ? author.email.trim() : author.name, excludeId)
+    .all<{ body: string }>();
+  return { others: results.length, othersNonCjk: results.filter((r) => !CJK_RE.test(r.body)).length };
+}
+
 export async function powNonceUsed(db: D1Database, nonce: string): Promise<boolean> {
   const row = await db.prepare(`SELECT 1 AS hit FROM comments WHERE pow_nonce = ? LIMIT 1`).bind(nonce).first();
   return !!row;

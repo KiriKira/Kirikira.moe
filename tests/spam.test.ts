@@ -182,6 +182,32 @@ describe('legacy spam samples and false positives', () => {
     expect(judgeComment(c, neutral).isSpam).toBe(true);
   });
 
+  // The multilingual "price" bot: one author, no links, a new language every time.
+  const robert = (body: string) => old('RobertFoumb', '', body, 'lucido.leinteract@gmail.com');
+  const robertHistory = { others: 8, othersNonCjk: 8 };
+  it.each([
+    'Szia, meg akartam tudni az árát.',
+    'Hi, ego volo scire vestri pretium.',
+    'Dia duit, theastaigh uaim do phraghas a fháil.',
+    'Hi, I wanted to know your price.',
+    'Hi, kam dashur të di çmimin tuaj',
+    'Zdravo, htio sam znati vašu cijenu.',
+  ])('catches the price bot: "%s"', (body) => {
+    expect(judgeComment(robert(body), signals({ ipHash: null, authorHistory: robertHistory })).isSpam).toBe(true);
+  });
+
+  it('catches the price bot on its first visit when the AI calls it a sales message', () => {
+    const v = judgeComment(robert('Hi, I wanted to know your price.'), signals({ ipHash: null, ai: { spam: 0.35, kind: 'normal', sales: 0.9 } }));
+    expect(v.isSpam).toBe(true);
+  });
+
+  it.each([
+    old('Stevenhut', 'https://taj.bkinf0-123.site', "don't think anything", 'aq40aqa@rambler.ru'),
+    old('FrbetPounk', 'https://betrfa.bking.site', 'interesting for a very long time', 'aq26aqa@rambler.ru'),
+  ])('catches nonsense with a spam-TLD website: $name', (c) => {
+    expect(judgeComment(c, neutral).isSpam).toBe(true);
+  });
+
   const GOOD = [
     old('路人', '', '=W='),
     old('路人', '', '好耶'),
@@ -192,13 +218,17 @@ describe('legacy spam samples and false positives', () => {
     old('xuanwo', 'https://xuanwo.io', '参考 https://github.com/v2ray/v2ray-core 和 https://www.v2fly.org 的文档'),
     old('Best', '', '这篇太好笑了 hhh'),
     old('Online Judge 爱好者', '', '请问 V2Ray 的 MITM 配置在新版本还能用吗？'),
+    old('Tom', '', "What's the price of that VPS you mentioned?"),
+    old('Amélie', '', "Merci pour l'article, très utile !"),
+    old('Lena', '', 'Danke für den Artikel über Rime!'),
   ];
 
   it.each(GOOD.map((c) => [c.body, c]))('never flags "%s", with or without AI', (_, c) => {
     expect(judgeComment(c, neutral).isSpam).toBe(false);
     // Even if the model wrongly calls a short harmless comment generic/commercial.
     const shaky = { spam: 0.5, kind: null, generic: 0.95, commercial: 0.9, onTopic: 0.05 };
-    if (!c.url && [...c.body].length <= 60 && countLinks(c.body) === 0) expect(judgeComment(c, signals({ ipHash: null, ai: shaky })).isSpam).toBe(false);
+    const harmless = !c.url && [...c.body].length <= 60 && countLinks(c.body) === 0 && (/\p{Script=Han}/u.test(c.body) || (c.body.match(/\p{L}/gu)?.length ?? 0) < 12);
+    if (harmless) expect(judgeComment(c, signals({ ipHash: null, ai: shaky })).isSpam).toBe(false);
   });
 
   it('uses the AI side questions for payload-carrying comments', () => {

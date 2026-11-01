@@ -30,10 +30,14 @@ export const WEIGHTS = {
   mostlyCyrillic: 40,
   commercialName: 50, // "buy potentstream", "online casino", "SEOSolutionVIP Fiverr"
   bareDomains: 60, // >= 3 domains listed without http ("Top News Sites ... cnbcnewstoday.com ...")
+  priceInquiry: 50, // "Hi, I wanted to know your price" (in a dozen languages) without CJK
+  foreignScript: 40, // accented Latin / Cyrillic / Arabic... text without any CJK on a Chinese blog
+  repeatForeignAuthor: 50, // same email (or name) already left >= 2 comments without CJK
   boilerplate: 30, // stock flattery ("stumbled upon your site") in a non-CJK comment
   aiSpam: 100, // Clef-flash says spam with p >= AI_SPAM_HIGH
   aiMaybe: 50, // AI_SPAM_MAYBE <= p < AI_SPAM_HIGH: only counts together with other signals
   aiCommercial: 50, // name/website/email look like a business or keyword (p >= AI_SIDE)
+  aiSales: 60, // a sales inquiry / business message unrelated to the post (p >= AI_SIDE)
   aiGeneric: 40, // boilerplate (p >= AI_SIDE) that is also off-topic (p <= 1 - AI_SIDE)
   aiHam: -30, // p <= AI_HAM: rescues e.g. an English comment with a couple of links
 } as const;
@@ -63,7 +67,17 @@ const BUILTIN_KEYWORDS = [
 ];
 
 const SHORTENER_HOSTS = ['bit.ly', 'tinyurl.com', 't.co', 'goo.gl', 'is.gd', 'cutt.ly', 'rb.gy', 'shorturl.at', 'ow.ly'];
-const SPAM_TLDS = ['.xyz', '.top', '.click', '.loan', '.win', '.bid', '.icu', '.monster', '.cfd', '.sbs', '.buzz'];
+const SPAM_TLDS = [
+  '.xyz', '.top', '.click', '.loan', '.win', '.bid', '.icu', '.monster', '.cfd', '.sbs', '.buzz',
+  '.site', '.online', '.fun', '.space', '.pw', '.rest', '.lol', '.bond', '.cyou', '.cam', '.bar', '.quest', '.mom',
+];
+
+/**
+ * "Price" in the languages of a well-known bot that asks every blog for its price
+ * ("Szia, meg akartam tudni az árát", "Hi, ego volo scire vestri pretium", ...).
+ */
+const PRICE_RE =
+  /(?<!\p{L})(price|prices|pricing|pretium|precio|prezzo|prix|preis|preço|prijs|prisen|hinta|kaina|cena|cenu|cenę|cijen\p{L}*|çmim\p{L}*|fiyat\p{L}*|harga|árát|árat|phraghas|preț\p{L}*|τιμή|цен[аую]|ціну)(?!\p{L})/iu;
 
 export type PowStatus = 'ok' | 'missing' | 'invalid' | 'expired' | 'replayed' | 'wrong-post';
 
@@ -76,7 +90,9 @@ export interface SpamSignals {
   recentFromIp: { lastMinute: number; lastHour: number };
   duplicate: boolean;
   /** Clef-flash answers, when it was asked (see ai.ts). */
-  ai?: { spam: number; kind: string | null; generic?: number; commercial?: number; onTopic?: number } | null;
+  ai?: { spam: number; kind: string | null; generic?: number; commercial?: number; onTopic?: number; sales?: number } | null;
+  /** Other comments by the same email (or name, without email): how many had no CJK. */
+  authorHistory?: { others: number; othersNonCjk: number };
 }
 
 export interface SpamVerdict {
@@ -196,6 +212,16 @@ export function judgeComment(input: CommentInput, signals: SpamSignals, rules: S
 
   if (!hasCjk && BOILERPLATE_RE.test(input.body)) add('boilerplate', WEIGHTS.boilerplate);
 
+  const bodyLength = [...input.body.trim()].length;
+  if (!hasCjk && bodyLength <= 120 && PRICE_RE.test(input.body)) add('price-inquiry', WEIGHTS.priceInquiry);
+
+  const letters0 = input.body.replace(/[\s\d\p{P}\p{S}]/gu, '');
+  const foreign = letters0.match(/[\u00c0-\u024f\u0370-\u03ff\u0400-\u04ff\u0590-\u05ff\u0600-\u06ff\u0e00-\u0e7f]/gu)?.length ?? 0;
+  if (!hasCjk && letters0.length >= 12 && foreign >= 1) add('foreign-script', WEIGHTS.foreignScript);
+
+  const history = signals.authorHistory;
+  if (!hasCjk && history && history.othersNonCjk >= 2) add(`repeat-foreign-author:${history.othersNonCjk}`, WEIGHTS.repeatForeignAuthor);
+
   const letters = input.body.replace(/[\s\d\p{P}\p{S}]/gu, '');
   const cyrillic = letters.match(/\p{Script=Cyrillic}/gu)?.length ?? 0;
   if (letters.length >= 20 && cyrillic / letters.length > 0.3) add('mostly-cyrillic', WEIGHTS.mostlyCyrillic);
@@ -230,10 +256,12 @@ export function judgeComment(input: CommentInput, signals: SpamSignals, rules: S
       add(tag, WEIGHTS.aiHam);
     } else reasons.push(tag);
 
-    // Side questions only matter when the comment carries something to promote: a short
-    // "=W=" or "好耶" without links or a website must never be flagged by them.
-    const carriesPayload = links + bare > 0 || input.url !== '' || [...input.body.trim()].length > 60;
-    if (carriesPayload) {
+    // Side questions never apply to short harmless reactions ("=W=", "好耶", "233", "thx"):
+    // no links or website and either some CJK or hardly any letters.
+    const latinLetters = input.body.match(/\p{L}/gu)?.length ?? 0;
+    const harmless = links + bare === 0 && input.url === '' && bodyLength <= 60 && (hasCjk || latinLetters < 12);
+    if (!harmless) {
+      if ((ai.sales ?? 0) >= AI_SIDE) add(`ai-sales:${ai.sales!.toFixed(2)}`, WEIGHTS.aiSales);
       if ((ai.commercial ?? 0) >= AI_SIDE) add(`ai-commercial:${ai.commercial!.toFixed(2)}`, WEIGHTS.aiCommercial);
       if ((ai.generic ?? 0) >= AI_SIDE && (ai.onTopic ?? 1) <= 1 - AI_SIDE) {
         add(`ai-generic:${ai.generic!.toFixed(2)}`, WEIGHTS.aiGeneric);
