@@ -1,21 +1,68 @@
+#!/usr/bin/env node
 /**
- * Deploy the built Worker as ONE bundle.
+ * Safe production deploy: a new version only receives traffic after it has been seen
+ * working, and a bad release rolls itself back.
  *
- * Astro's build writes `.wrangler/deploy/config.json`, which makes a plain `wrangler deploy`
- * pick up the adapter's `dist/server/wrangler.json` — a `no_bundle: true` multi-module upload.
- * That upload has repeatedly produced deployments where every route answers 500 (`error code:
- * 1101`) while the identical bundle runs fine locally. Bundling the adapter's `entry.mjs`
- * (which already wraps src/worker.ts: admin gate + cron) into a single script avoids it.
+ *   npm run deploy                       # build, then everything below
+ *   node scripts/deploy.mjs              # after `npm run build`
+ *   SITE_URL=https://kirikira.moe node scripts/deploy.mjs
+ *   node scripts/deploy.mjs --no-migrate # skip `d1 migrations apply`
+ *   node scripts/deploy.mjs --first      # only for the very first deploy of a new Worker
  *
- * Kept out of wrangler.jsonc itself because Astro validates `main` during `astro build`,
- * before dist/server/entry.mjs exists.
+ * Why: on the preview, deployments that built and uploaded fine answered
+ * "error code: 1101" on every route, static files included (the Worker failed while
+ * starting, before any of our code ran). Two lessons are built in here:
+ *
+ * 1. Upload ONE bundled script (credit: Hermes). `astro build` writes
+ *    .wrangler/deploy/config.json, which makes a plain `wrangler deploy` upload the
+ *    adapter's dist/server/wrangler.json: `no_bundle: true` with a main module plus
+ *    20-odd chunks, the path that kept breaking. We derive wrangler.deploy.jsonc from
+ *    wrangler.jsonc with main = dist/server/entry.mjs (already wrapping src/worker.ts)
+ *    and no_bundle = false, so wrangler uploads a single script.
+ *
+ * 2. Never trust "deployed" without looking. Steps:
+ *    preflight  -> outputs exist, bundle fits the free plan (3 MiB gzip), config sane
+ *    migrate    -> D1 migrations (must stay backwards compatible with the live version)
+ *    upload     -> `wrangler versions upload`: a new version with its own preview URL,
+ *                  receiving NO production traffic yet
+ *    smoke      -> scripts/smoke.mjs against that preview URL; stop here on failure
+ *    promote    -> `wrangler versions deploy <id>@100%`, then cron triggers
+ *    verify     -> smoke the live URL; on failure roll back to the previous version
+ *
+ * Exits non-zero whenever production is not on a verified version, so Workers Builds
+ * (or CI) reports the failure and notifies.
  */
-import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { gzipSync } from 'node:zlib';
 
 const SRC = 'wrangler.jsonc';
 const OUT = 'wrangler.deploy.jsonc';
+const GZIP_LIMIT = 3 * 1024 * 1024; // Workers Free plan script size limit (after compression)
+const args = new Set(process.argv.slice(2));
 
+const step = (s) => console.log(`\n=== ${s}`);
+const die = (msg) => {
+  console.error(`\n✗ ${msg}`);
+  process.exit(1);
+};
+
+function wrangler(argv, { capture = false, env = {} } = {}) {
+  const r = spawnSync('npx', ['wrangler', ...argv], {
+    stdio: capture ? ['ignore', 'pipe', 'inherit'] : 'inherit',
+    encoding: 'utf8',
+    env: { ...process.env, ...env },
+  });
+  return { ok: r.status === 0, out: r.stdout ?? '' };
+}
+
+function smoke(url) {
+  return spawnSync(process.execPath, ['scripts/smoke.mjs', url], { stdio: 'inherit' }).status === 0;
+}
+
+/** Strip // comments from JSONC (string-aware) so JSON.parse can read wrangler.jsonc. */
 const stripComments = (text) =>
   text
     .split('\n')
@@ -30,18 +77,139 @@ const stripComments = (text) =>
     })
     .join('\n');
 
-const config = JSON.parse(stripComments(readFileSync(SRC, 'utf8')));
+// ---------- preflight ----------
 
-if (!existsSync('dist/server/entry.mjs')) {
-  console.error('dist/server/entry.mjs missing — run `npm run build` first.');
-  process.exit(1);
+step('preflight');
+for (const f of ['dist/server/entry.mjs', 'dist/client/index.html', 'dist/client/404.html', 'dist/client/robots.txt', 'dist/client/threads.json']) {
+  if (!existsSync(f)) die(`${f} missing — run \`npm run build\` first.`);
 }
+const config = JSON.parse(stripComments(readFileSync(SRC, 'utf8')));
+const name = config.name;
+if (!name) die('wrangler.jsonc has no "name".');
+const db = config.d1_databases?.[0];
+if (!db?.database_id || /^0+(-0+)*$/.test(db.database_id)) die('wrangler.jsonc: d1_databases[0].database_id is still the placeholder.');
 
 config.main = './dist/server/entry.mjs';
 config.no_bundle = false;
-writeFileSync(
-  OUT,
-  `// GENERATED by scripts/deploy.mjs — do not edit, edit wrangler.jsonc instead.\n${JSON.stringify(config, null, 2)}\n`,
-);
+config.workers_dev = true; // version preview URLs live on workers.dev
+config.preview_urls = true;
+writeFileSync(OUT, `// GENERATED by scripts/deploy.mjs — edit wrangler.jsonc instead.\n${JSON.stringify(config, null, 2)}\n`);
 
-execFileSync('npx', ['wrangler', 'deploy', '--config', OUT], { stdio: 'inherit' });
+// Bundle exactly as the upload will, and measure it.
+const outdir = mkdtempSync(join(tmpdir(), 'kirikira-bundle-'));
+if (!wrangler(['deploy', '--dry-run', '--config', OUT, '--outdir', outdir]).ok) die('wrangler dry run failed.');
+const files = readdirSync(outdir).filter((f) => /\.(m?js|wasm)$/.test(f));
+const gz = files.reduce((n, f) => n + gzipSync(readFileSync(join(outdir, f))).length, 0);
+const raw = files.reduce((n, f) => n + statSync(join(outdir, f)).size, 0);
+rmSync(outdir, { recursive: true, force: true });
+console.log(`bundle: ${files.length} file(s), ${(raw / 1024).toFixed(0)} KiB raw, ${(gz / 1024).toFixed(0)} KiB gzip`);
+if (files.filter((f) => /\.m?js$/.test(f)).length !== 1) die(`expected ONE bundled script, got: ${files.join(', ')}`);
+if (gz > GZIP_LIMIT * 0.9) die(`bundle is ${(gz / 1048576).toFixed(2)} MiB gzip, too close to the 3 MiB free-plan limit.`);
+
+// ---------- migrate ----------
+
+if (!args.has('--no-migrate')) {
+  step(`D1 migrations (${db.database_name})`);
+  if (!wrangler(['d1', 'migrations', 'apply', db.database_name, '--remote', '--config', OUT]).ok) die('D1 migrations failed; nothing was deployed.');
+}
+
+// ---------- remember what is live ----------
+
+step('current production version');
+let previous = null;
+const status = wrangler(['deployments', 'status', '--json', '--config', OUT], { capture: true });
+if (status.ok) {
+  try {
+    const d = JSON.parse(status.out);
+    previous = (d.versions ?? []).sort((a, b) => (b.percentage ?? 0) - (a.percentage ?? 0))[0]?.version_id ?? null;
+  } catch {
+    /* first deploy, or unexpected output */
+  }
+}
+// Only an explicit --first may deploy without a live version to stage next to and roll
+// back to; anything else (API error, auth problem, wrong account) must not silently
+// turn into an ungated `wrangler deploy`.
+if (!previous && !args.has('--first')) {
+  die('could not read the live version (`wrangler deployments status` failed). If this Worker has never been deployed, rerun with --first.');
+}
+if (previous && args.has('--first')) die('--first given, but the Worker already has a live version.');
+console.log(previous ? `live: ${previous}` : 'no live version: first deploy (--first)');
+
+// ---------- upload a version without traffic ----------
+
+step('upload new version (no traffic yet)');
+const outFile = join(mkdtempSync(join(tmpdir(), 'kirikira-out-')), 'wrangler-output.ndjson');
+const sha = (() => {
+  try {
+    return execFileSync('git', ['rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).trim();
+  } catch {
+    return 'local';
+  }
+})();
+if (previous) {
+  if (!wrangler(['versions', 'upload', '--config', OUT, '--message', `deploy ${sha}`, '--tag', sha], { env: { WRANGLER_OUTPUT_FILE_PATH: outFile } }).ok) {
+    die('version upload failed; production is untouched.');
+  }
+} else {
+  // A brand-new Worker has no version to stage next to. Nothing can break (no domain
+  // points at it yet: bind the domain only after this passes); the smoke test still runs.
+  step('first deploy (--first)');
+  if (!wrangler(['deploy', '--config', OUT], { env: { WRANGLER_OUTPUT_FILE_PATH: outFile } }).ok) die('first deploy failed.');
+}
+
+const entries = existsSync(outFile)
+  ? readFileSync(outFile, 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => JSON.parse(l))
+  : [];
+const uploaded = entries.find((e) => e.type === 'version-upload');
+const deployed = entries.find((e) => e.type === 'deploy');
+const versionId = uploaded?.version_id ?? deployed?.version_id;
+const previewUrl = uploaded?.preview_url ?? null;
+// https://<8 hex>-<name>.<subdomain>.workers.dev -> https://<name>.<subdomain>.workers.dev
+const workersDevUrl =
+  previewUrl?.replace(/^https:\/\/[0-9a-f]{8}-/, 'https://') ?? deployed?.targets?.find((t) => t.includes('workers.dev')) ?? null;
+const liveUrl = (process.env.SITE_URL || workersDevUrl || '').replace(/\/+$/, '');
+
+if (!versionId) die('could not read the uploaded version id from wrangler output.');
+console.log(`version: ${versionId}${previewUrl ? `\npreview: ${previewUrl}` : ''}`);
+
+if (uploaded) {
+  if (!previewUrl) die('no preview URL for the new version (preview_urls disabled?); refusing to promote an unverified version.');
+
+  // ---------- smoke the staged version ----------
+
+  step('smoke test the new version before it gets traffic');
+  if (!smoke(previewUrl)) die(`new version ${versionId} failed its smoke test; production stays on ${previous}.`);
+
+  // ---------- promote ----------
+
+  step('promote to 100%');
+  if (!wrangler(['versions', 'deploy', `${versionId}@100`, '--yes', '--message', `deploy ${sha}`, '--config', OUT]).ok) {
+    die('promotion failed; check `wrangler deployments status`.');
+  }
+}
+
+if (config.triggers?.crons?.length && !wrangler(['triggers', 'deploy', '--config', OUT]).ok) {
+  console.warn('! cron triggers could not be updated (site is fine; spam purge schedule may be stale).');
+}
+
+// ---------- verify what visitors get ----------
+
+if (!liveUrl) die('no URL to verify (set SITE_URL).');
+step(`verify live site ${liveUrl}`);
+if (smoke(liveUrl)) {
+  console.log(`\n✓ ${versionId} is live and verified.`);
+  process.exit(0);
+}
+
+if (!previous) die('the first deploy failed its smoke test and there is nothing to roll back to.');
+step(`ROLLBACK to ${previous}`);
+const back = wrangler(['versions', 'deploy', `${previous}@100`, '--yes', '--message', `auto-rollback from ${versionId}`, '--config', OUT]);
+const recovered = back.ok && smoke(liveUrl);
+die(
+  recovered
+    ? `${versionId} failed on the live URL and was rolled back to ${previous} (verified).`
+    : `${versionId} failed AND rollback to ${previous} did not restore the site — see docs/MIGRATION_RUNBOOK.md「事故处理」.`,
+);

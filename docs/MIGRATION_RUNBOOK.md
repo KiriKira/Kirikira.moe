@@ -99,23 +99,48 @@ npx wrangler d1 execute kirikira --remote --file data/comments.sql    # 导入�
 npx wrangler d1 execute kirikira --remote --command "SELECT COUNT(*) FROM comments"
 # ↑ 应等于报告里的 "comments exported to SQL"
 
-openssl rand -hex 32 | npx wrangler secret put COMMENT_SECRET
+openssl rand -hex 32 > /tmp/comment_secret && npx wrangler secret put COMMENT_SECRET < /tmp/comment_secret
+# 把这个值存进密码管理器再删掉文件：重建 Worker 时要用同一个值（否则旧的 IP 哈希/封禁规则对不上）
 ```
 
-### 6.2 部署
+### 6.2 部署（必须走 `scripts/deploy.mjs`，不要直接 `wrangler deploy`）
 
-推荐用 **Workers Builds**（push 即自动部署，之后在 CMS 里改文章不需要本地任何操作）：
-Cloudflare 控制台 → Workers & Pages → Create → Import a repository → 选本仓库，
-Build command `npm run build`，Deploy command `npx wrangler deploy`，生产分支 `main`。
-也可以手动：`npm run deploy`。
+> 背景：预览站出现过「构建成功、上传成功，但所有路径（连 `/robots.txt` 都）返回 `error code: 1101`」，
+> 只能删掉 Worker 重建。`astro build` 会让裸的 `wrangler deploy` 走 `no_bundle` 多模块上传（主模块 + 二十多个 chunk），
+> 这条路反复出事。`scripts/deploy.mjs` 改为上传**单个打包好的脚本**，并且**新版本先不接流量**：
+>
+> 1. 预检：构建产物齐全、只有 1 个脚本、gzip 后远小于免费版 3 MiB 上限、D1 id 不是占位符
+> 2. D1 迁移（迁移必须兼容正在运行的旧版本：只加列/加表，不删不改）
+> 3. `wrangler versions upload`：上传新版本，拿到它专属的预览地址，**此时线上流量仍在旧版本**
+> 4. `scripts/smoke.mjs` 冒烟测试这个预览地址（静态文件、首页、文章页、归档、RSS、评论 API + D1、PoW 签名、后台 404、404 页）——不通过就停，线上不受影响
+> 5. 通过才 `wrangler versions deploy <新版本>@100%`，并更新 cron
+> 6. 再对线上地址冒烟一次；失败则**自动回滚**到上一个版本并再验证
+>
+> 任何一步失败都以非 0 退出，Workers Builds 会把这次构建标红并发邮件。
 
-部署后先用 `https://kirikira-moe.<account>.workers.dev` 验证：
+**Workers Builds 设置**（Worker → Settings → Build）：
+
+| 项 | 值 |
+|---|---|
+| Build command | `npm run build` |
+| Deploy command | `npm run deploy:only` |
+| Non-production branch deploy command | `npx wrangler versions upload`（默认值即可，只出预览地址，不影响线上） |
+| Production branch | `master` |
+| Build cache | **关闭**（开着会复用旧的资源哈希，预览站曾因此大面积 404） |
+| Build variables | `SITE_URL=https://kirikira.moe`（**域名绑好之后**再加；没加时用 workers.dev 地址做发布后验证） |
+
+**第一次部署**（新 Worker 还没有可回滚的版本，只能显式确认）：
 
 ```sh
-npm run check-urls -- https://kirikira-moe.<account>.workers.dev
+npm run build
+node scripts/deploy.mjs --first          # 部署到 kirikira-moe.<子域>.workers.dev 并冒烟
+npm run check-urls -- https://kirikira-moe.<子域>.workers.dev
 ```
 
-预期：`N/N legacy URLs OK.`
+预期：冒烟 `All 10 checks passed`，`N/N legacy URLs OK.`。之后的每次发布都不需要 `--first`；
+如果脚本说「could not read the live version」，说明 API/登录出了问题，**不要**加 `--first` 硬推。
+
+随时手动检查任一环境：`npm run smoke -- https://kirikira.moe`。
 
 ### 6.3 管理后台保护（Cloudflare Access，必须做）
 
@@ -135,7 +160,11 @@ Zero Trust → Access → Applications → Add → Self-hosted：
 1. 确认 `kirikira.moe` 的 DNS 已托管在 Cloudflare。
 2. Worker → Settings → Domains & Routes → Add Custom Domain → `kirikira.moe`（如需要也加 `www`，并在 `_redirects` 里加 `www` → 根域的跳转，或用 Cloudflare 的 Redirect Rule）。
 3. 原来指向旧服务器的 A/AAAA 记录会被替换；旧服务器先别关。
-4. 切换后：`npm run check-urls -- https://kirikira.moe`。
+4. 切换后：`npm run smoke -- https://kirikira.moe` 和 `npm run check-urls -- https://kirikira.moe`。
+5. 在 Workers Builds 里加 `SITE_URL=https://kirikira.moe`，以后每次发布都会验证正式域名。
+6. 打开监控：GitHub 仓库 Settings → Secrets and variables → Actions → Variables 加 `WATCHDOG_URL=https://kirikira.moe`
+   （可选再加 Secrets `TELEGRAM_BOT_TOKEN`、`TELEGRAM_CHAT_ID`）。`.github/workflows/watchdog.yml` 每 10 分钟检查一次，
+   连续两次失败就开一个 `site-down` issue（GitHub 会发邮件/推送）并发 Telegram，恢复后自动关闭。
 5. 在 Google Search Console / Bing 提交 `https://kirikira.moe/sitemap-index.xml`。
 
 ### 6.5 旧 Service Worker
@@ -184,6 +213,29 @@ Zero Trust → Access → Applications → Add → Self-hosted：
 - 新站稳定运行 1–2 周后再下线旧服务器。
 - 旧库 `db.sqlite3` 和 `data/` 离线备份到安全的地方，然后从工作目录删除。
 - 旧仓库中的 `legacy/kirikira/settings.py` 曾提交过 Django `SECRET_KEY`；旧站下线后它就无用了，但不要在任何地方复用它。
+
+## 事故处理（线上打不开 / 1101 / 大面积 500）
+
+按顺序做，每步之后 `npm run smoke -- https://kirikira.moe`：
+
+1. **确认范围**：`curl -sI https://kirikira.moe/robots.txt`。静态文件也 1101/500，说明 Worker 在启动阶段就挂了（和预览站那次一样），不是业务代码的问题。
+2. **回滚到上一个好版本**（几秒生效，D1 数据不受影响）：
+   ```sh
+   npx wrangler deployments list --name kirikira-moe                 # 找到上一个正常的版本 ID
+   npx wrangler versions deploy <版本ID>@100 --yes --name kirikira-moe
+   ```
+3. **回滚也不行 = Worker 实体本身坏了**（预览站那次的情况）：用同一份构建换一个新 Worker 名，再把域名挪过去。数据都在 D1 里，不会丢。
+   ```sh
+   # wrangler.jsonc 里把 "name" 临时改成 "kirikira-moe-b"（不要提交），然后：
+   npm run build && node scripts/deploy.mjs --first --no-migrate
+   npx wrangler secret put COMMENT_SECRET --name kirikira-moe-b      # 用密码管理器里的同一个值
+   npm run smoke -- https://kirikira-moe-b.<子域>.workers.dev
+   ```
+   冒烟通过后：控制台 → 旧 Worker → Domains & Routes 移除 `kirikira.moe` → 新 Worker 添加 `kirikira.moe`（约 1 分钟生效），
+   Access 应用不用改（它按域名路径保护），然后把 Workers Builds 连到新 Worker 或把仓库里的 name 正式改过去。
+4. 事后：在 `site-down` issue 里记录原因和处理，以后发布照常走 `scripts/deploy.mjs`。
+
+**建议上线前在预览站演练一次第 2、3 步**，确认自己能在 10 分钟内恢复。
 
 ## 出问题时
 

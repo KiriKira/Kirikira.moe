@@ -21,7 +21,8 @@
     "check-urls": "node scripts/check-urls.ts",
     "db:migrate:local": "wrangler d1 migrations apply kirikira --local",
     "db:migrate:remote": "wrangler d1 migrations apply kirikira --remote",
-    "deploy:only": "node scripts/deploy.mjs"
+    "deploy:only": "node scripts/deploy.mjs",
+    "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.4.2",
