@@ -82,8 +82,12 @@ export async function submitComment(raw: Record<string, unknown>, ctx: SubmitCon
   // free quota, and a hard failure is spam whatever the model thinks.
   let ai: AiResult | null = null;
   if (ctx.ai && !hasHardReason(verdict.reasons)) {
-    const post = await ctx.postContext?.(input.postId);
+    const [post, history] = await Promise.all([
+      ctx.postContext?.(input.postId),
+      store.authorRecent(ctx.db, { email: input.email, name: input.name }),
+    ]);
     ai = await aiSpamCheck(ctx.ai, {
+      history,
       name: input.name,
       url: input.url,
       email: input.email,
@@ -110,7 +114,8 @@ export async function submitComment(raw: Record<string, unknown>, ctx: SubmitCon
     user_agent: ctx.userAgent?.slice(0, 300) ?? null,
     // A replayed nonce is already in the table; storing it again would violate the unique index.
     pow_nonce: pow.status === 'ok' ? pow.nonce : null,
-    ai_spam: ai?.spam ?? null,
+    // Stored as P(not a real reader) so the admin can sort/scan by "how spammy".
+    ai_spam: ai ? 1 - ai.reader : null,
     ai_kind: ai?.kind ?? null,
     ai_checked_at: ai ? createdAt : null,
     created_at: createdAt,

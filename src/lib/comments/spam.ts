@@ -5,8 +5,16 @@ import type { CommentInput, SpamRule } from './types';
  * marks the comment as spam. Spam is stored (so false positives can be restored
  * from the admin page) but hidden from everyone except the submitter's browser.
  *
- * Tune the numbers here; add site-specific words/domains through the admin
- * page's rules (table `spam_rules`) rather than by editing code.
+ * Division of labour:
+ *  - Hard checks catch bots by behaviour: proof of work, honeypot, timing, IP bursts.
+ *  - A few structural rules catch link spam regardless of wording (link counts, lists
+ *    of domains, HTML/BBCode links, a URL as the name) and comments in a script the
+ *    blog's readers don't write (Cyrillic, Arabic, Hangul...). They are also the fallback when
+ *    the AI is unavailable, so they stay deliberately general: no TLD blacklists or
+ *    phrase lists that a spammer can reword around and a real reader can trip over.
+ *  - What a comment *means* (a reader? an ad? a template blasted to every site?) is the
+ *    AI's job: see ai.ts.
+ *  - Site-specific words/domains/emails/IPs: the admin's rules (table `spam_rules`).
  */
 export const SPAM_THRESHOLD = 100;
 
@@ -22,32 +30,50 @@ export const WEIGHTS = {
   floodFromIp: 60, // > FLOOD_PER_HOUR comments from one IP in an hour
   manyLinks: 60, // >= 3 links
   twoLinks: 40, // with no-cjk-with-link this reaches the threshold: English + 2 links = spam
+  bareDomains: 60, // >= 3 domains listed without http ("Top News Sites ... cnbcnewstoday.com ...")
   noCjkWithLink: 60,
   urlInName: 60,
+  foreignScript: 100, // written mainly in a script the blog's readers don't use (Cyrillic, Arabic, Hangul...)
   duplicate: 60,
   builtinKeyword: 50,
-  shortenerOrSpamTld: 40,
-  mostlyCyrillic: 40,
-  commercialName: 50, // "buy potentstream", "online casino", "SEOSolutionVIP Fiverr"
-  bareDomains: 60, // >= 3 domains listed without http ("Top News Sites ... cnbcnewstoday.com ...")
-  boilerplate: 30, // stock flattery ("stumbled upon your site") in a non-CJK comment
-  aiSpam: 100, // Clef-flash says spam with p >= AI_SPAM_HIGH
-  aiMaybe: 50, // AI_SPAM_MAYBE <= p < AI_SPAM_HIGH: only counts together with other signals
-  aiCommercial: 50, // name/website/email look like a business or keyword (p >= AI_SIDE)
-  aiGeneric: 40, // boilerplate (p >= AI_SIDE) that is also off-topic (p <= 1 - AI_SIDE)
-  aiHam: -30, // p <= AI_HAM: rescues e.g. an English comment with a couple of links
+  shortener: 40,
+  aiSpam: 100, // P(real reader) <= AI_NOT_READER
+  aiSuspect: 60, // P(real reader) <= AI_DOUBT: counts together with any other signal
+  aiReader: -30, // P(real reader) >= AI_READER: forgives soft rules (never hard checks/admin rules)
 } as const;
 
-export const AI_SIDE = 0.7;
-
-export const AI_SPAM_HIGH = 0.85;
-export const AI_SPAM_MAYBE = 0.6;
-export const AI_HAM = 0.1;
+export const AI_NOT_READER = 0.15;
+export const AI_DOUBT = 0.4;
+export const AI_READER = 0.85;
+/** Short harmless reactions ("=W=", "好耶", "233") are only flagged by a near-certain AI. */
+export const AI_NOT_READER_HARMLESS = 0.05;
 
 /**
  * Reasons that settle a comment as spam before any AI is asked (and that the AI can't
  * outvote): failed proof of work, honeypot, timing, IP burst, HTML/BBCode links.
  */
+/**
+ * Readers write Chinese, English or Japanese. A comment whose letters are mostly in some
+ * other script (Cyrillic, Greek, Arabic, Hebrew, Hangul, Thai, Devanagari...) is a bot.
+ * Needs at least 8 such letters, so kaomoji like "(´Д`)" or "=ω=" are fine. Latin-script
+ * languages other than English (Hungarian, Latin, ...) can't be told apart reliably by a
+ * rule; the AI is told the same policy and judges those.
+ */
+export function foreignScriptShare(body: string): { letters: number; foreign: number } {
+  let letters = 0;
+  let foreign = 0;
+  for (const ch of body.match(/\p{L}/gu) ?? []) {
+    letters++;
+    if (!/[\p{sc=Latin}\p{sc=Han}\p{sc=Hiragana}\p{sc=Katakana}\p{sc=Common}\p{sc=Inherited}]/u.test(ch)) foreign++;
+  }
+  return { letters, foreign };
+}
+
+export function isForeignScript(body: string): boolean {
+  const { letters, foreign } = foreignScriptShare(body);
+  return foreign >= 8 && foreign * 2 > letters;
+}
+
 export function hasHardReason(reasons: string[]): boolean {
   return reasons.some((r) => /^(honeypot|pow:|too-fast|ip-burst|html-or-bbcode-link)/.test(r));
 }
@@ -55,7 +81,7 @@ export function hasHardReason(reasons: string[]): boolean {
 export const BURST_PER_MINUTE = 3;
 export const FLOOD_PER_HOUR = 10;
 
-/** Conservative defaults; anything site-specific belongs in spam_rules. */
+/** Unambiguous spam vocabulary only; anything site-specific belongs in spam_rules. */
 const BUILTIN_KEYWORDS = [
   'viagra', 'cialis', 'casino', 'porn', 'escort', 'payday loan', 'crypto airdrop', 'seo service',
   'backlink', 'buy followers', 'replica watches', 'forex signal',
@@ -63,7 +89,6 @@ const BUILTIN_KEYWORDS = [
 ];
 
 const SHORTENER_HOSTS = ['bit.ly', 'tinyurl.com', 't.co', 'goo.gl', 'is.gd', 'cutt.ly', 'rb.gy', 'shorturl.at', 'ow.ly'];
-const SPAM_TLDS = ['.xyz', '.top', '.click', '.loan', '.win', '.bid', '.icu', '.monster', '.cfd', '.sbs', '.buzz'];
 
 export type PowStatus = 'ok' | 'missing' | 'invalid' | 'expired' | 'replayed' | 'wrong-post';
 
@@ -75,8 +100,8 @@ export interface SpamSignals {
   ipHash: string | null;
   recentFromIp: { lastMinute: number; lastHour: number };
   duplicate: boolean;
-  /** Clef-flash answers, when it was asked (see ai.ts). */
-  ai?: { spam: number; kind: string | null; generic?: number; commercial?: number; onTopic?: number } | null;
+  /** Clef-flash verdict, when it was asked (see ai.ts). */
+  ai?: { reader: number; kind: string } | null;
 }
 
 export interface SpamVerdict {
@@ -89,32 +114,8 @@ export interface SpamVerdict {
 const CJK_RE = /[぀-ヿ㐀-䶿一-鿿가-힯＀-￯]/;
 const URL_RE = /\bhttps?:\/\/[^\s<>()"'\]]+|\bwww\.[^\s<>()"'\]]+/gi;
 const DOMAIN_LIKE_RE = /\b[a-z0-9-]+\.(com|net|org|xyz|top|ru|cn|info|io|me|co|biz|shop|site|online)\b/i;
-const BARE_DOMAIN_RE = /\b[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.(?:com|net|org|info|biz|xyz|top|io|ai|co|me|site|online|shop|store|app|news|ru|cn|uk|us|in|pro|club|vip|live|tv)\b/gi;
-
-/** Words that make a commenter "name" read like an ad or a search keyword. */
-const COMMERCIAL_NAME_RE =
-  /\b(buy|cheap|best|online|casino|slots?|bet(ting)?|seo|vip|fiverr|loans?|shop|store|reviews?|official|discount|sale|deals?|coupons?|crypto|bitcoin|forex|porn|sex|pills?|supplements?|agency|marketing|services?|backlinks?|download|apk|escort|price|vape|cbd|keto|followers|traffic)\b/i;
-
-/** Stock flattery used by comment spammers, checked only when the comment has no CJK. */
-const BOILERPLATE_RE = new RegExp(
-  [
-    'stumbled (up)?on',
-    'found (your|this) (site|website|blog|web ?site|weblog|page)',
-    '(this|your) (site|website|blog|weblog)( post)? (is|has been)',
-    'keep up the (good|great|excellent) work',
-    "i('ll| will) (be )?(subscrib|bookmark|book-mark)",
-    'bookmark(ed)? (it|this|your)',
-    'high[- ]quality (articles|content|posts)',
-    '(great|nice|wonderful|awesome|informative|excellent) (post|article|blog|site|website|read)',
-    'thanks? (you )?for (sharing|this (post|article))',
-    'your (rss )?feeds?',
-    "(don'?t|do not) hes(i|ia)tate to (contact|conatct)",
-    'articles? posts?',
-    'guest posts?',
-    'i (have been|was) (exploring|browsing|searching|surfing)',
-  ].join('|'),
-  'i',
-);
+const BARE_DOMAIN_RE =
+  /\b[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.(?:com|net|org|info|biz|xyz|top|io|ai|co|me|site|online|shop|store|app|news|ru|cn|uk|us|in|pro|club|vip|live|tv)\b/gi;
 
 export function extractHosts(text: string): string[] {
   const hosts: string[] = [];
@@ -136,6 +137,16 @@ export function countLinks(body: string): number {
 /** Domains written without http:// (spammers list them to dodge link filters). */
 export function countBareDomains(body: string): number {
   return body.replace(URL_RE, ' ').match(BARE_DOMAIN_RE)?.length ?? 0;
+}
+
+/**
+ * A short reaction with nothing to promote: no links or website, and either some CJK or
+ * hardly any letters ("=W=", "好耶", "233", "thx"). Only a near-certain AI may flag these.
+ */
+export function isHarmlessReaction(input: CommentInput): boolean {
+  const body = input.body.trim();
+  if (input.url !== '' || countLinks(body) + countBareDomains(body) > 0 || [...body].length > 60) return false;
+  return CJK_RE.test(body) || (body.match(/\p{L}/gu)?.length ?? 0) < 12;
 }
 
 function hostMatches(host: string, pattern: string): boolean {
@@ -185,20 +196,15 @@ export function judgeComment(input: CommentInput, signals: SpamSignals, rules: S
   if (links >= 3) add(`links:${links}`, WEIGHTS.manyLinks);
   else if (links === 2) add('links:2', WEIGHTS.twoLinks);
 
+  const bare = countBareDomains(input.body);
+  if (bare >= 3) add(`bare-domains:${bare}`, WEIGHTS.bareDomains);
+
   const hasCjk = CJK_RE.test(input.body);
   if (!hasCjk && (links > 0 || input.url !== '')) add('no-cjk-with-link', WEIGHTS.noCjkWithLink);
 
   if (countLinks(input.name) > 0 || DOMAIN_LIKE_RE.test(input.name)) add('url-in-name', WEIGHTS.urlInName);
-  else if (COMMERCIAL_NAME_RE.test(input.name)) add('commercial-name', WEIGHTS.commercialName);
 
-  const bare = countBareDomains(input.body);
-  if (bare >= 3) add(`bare-domains:${bare}`, WEIGHTS.bareDomains);
-
-  if (!hasCjk && BOILERPLATE_RE.test(input.body)) add('boilerplate', WEIGHTS.boilerplate);
-
-  const letters = input.body.replace(/[\s\d\p{P}\p{S}]/gu, '');
-  const cyrillic = letters.match(/\p{Script=Cyrillic}/gu)?.length ?? 0;
-  if (letters.length >= 20 && cyrillic / letters.length > 0.3) add('mostly-cyrillic', WEIGHTS.mostlyCyrillic);
+  if (isForeignScript(input.body)) add('foreign-script', WEIGHTS.foreignScript);
 
   if (signals.duplicate) add('duplicate', WEIGHTS.duplicate);
 
@@ -207,9 +213,7 @@ export function judgeComment(input: CommentInput, signals: SpamSignals, rules: S
   if (keyword) add(`keyword:${keyword}`, WEIGHTS.builtinKeyword);
 
   const hosts = extractHosts(`${input.body}\n${input.url}`);
-  if (hosts.some((h) => SHORTENER_HOSTS.some((s) => hostMatches(h, s)) || SPAM_TLDS.some((t) => h.endsWith(t)))) {
-    add('shortener-or-spam-tld', WEIGHTS.shortenerOrSpamTld);
-  }
+  if (hosts.some((h) => SHORTENER_HOSTS.some((s) => hostMatches(h, s)))) add('shortener', WEIGHTS.shortener);
 
   for (const rule of rules) {
     if (ruleMatches(rule, input, hosts, signals.ipHash)) add(`rule:${rule.id}:${rule.kind}`, rule.weight);
@@ -217,28 +221,14 @@ export function judgeComment(input: CommentInput, signals: SpamSignals, rules: S
 
   const ai = signals.ai;
   if (ai) {
-    const tag = `ai:${ai.spam.toFixed(2)}${ai.kind ? `:${ai.kind}` : ''}`;
-    if (ai.spam >= AI_SPAM_HIGH) add(tag, WEIGHTS.aiSpam);
-    else if (ai.spam >= AI_SPAM_MAYBE) add(tag, WEIGHTS.aiMaybe);
+    const tag = `ai:reader=${ai.reader.toFixed(2)}:${ai.kind}`;
+    const notReader = isHarmlessReaction(input) ? AI_NOT_READER_HARMLESS : AI_NOT_READER;
+    if (ai.reader <= notReader) add(tag, WEIGHTS.aiSpam);
+    else if (ai.reader <= AI_DOUBT && !isHarmlessReaction(input)) add(tag, WEIGHTS.aiSuspect);
     // The AI may forgive soft heuristics, never hard checks or the admin's own rules.
-    else if (
-      ai.spam <= AI_HAM &&
-      (ai.commercial ?? 0) < 0.5 &&
-      !hasHardReason(reasons) &&
-      !reasons.some((r) => r.startsWith('rule:'))
-    ) {
-      add(tag, WEIGHTS.aiHam);
+    else if (ai.reader >= AI_READER && !hasHardReason(reasons) && !reasons.some((r) => r.startsWith('rule:'))) {
+      add(tag, WEIGHTS.aiReader);
     } else reasons.push(tag);
-
-    // Side questions only matter when the comment carries something to promote: a short
-    // "=W=" or "好耶" without links or a website must never be flagged by them.
-    const carriesPayload = links + bare > 0 || input.url !== '' || [...input.body.trim()].length > 60;
-    if (carriesPayload) {
-      if ((ai.commercial ?? 0) >= AI_SIDE) add(`ai-commercial:${ai.commercial!.toFixed(2)}`, WEIGHTS.aiCommercial);
-      if ((ai.generic ?? 0) >= AI_SIDE && (ai.onTopic ?? 1) <= 1 - AI_SIDE) {
-        add(`ai-generic:${ai.generic!.toFixed(2)}`, WEIGHTS.aiGeneric);
-      }
-    }
   }
 
   return { isSpam: score >= SPAM_THRESHOLD, score, reasons };

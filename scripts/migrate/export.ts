@@ -234,7 +234,14 @@ for (const c of comments) {
   // spam is imported hidden; the admin's "重新检查" adds the AI pass later.
   const verdict = judgeComment(
     { postId: String(c.post_id), parentId: null, name, email: c.email?.trim() ?? '', url: c.url?.trim() ?? '', body },
-    { honeypot: '', pow: 'ok', elapsedMs: null, ipHash: null, recentFromIp: { lastMinute: 0, lastHour: 0 }, duplicate: false },
+    {
+      honeypot: '',
+      pow: 'ok',
+      elapsedMs: null,
+      ipHash: null,
+      recentFromIp: { lastMinute: 0, lastHour: 0 },
+      duplicate: false,
+    },
   );
   if (verdict.isSpam) spamComments++;
   sqlLines.push(

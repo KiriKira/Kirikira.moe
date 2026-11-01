@@ -46,6 +46,29 @@ export async function hasRecentDuplicate(db: D1Database, bodyFp: string, now = D
   return !!row;
 }
 
+/**
+ * The author's other comments (by email, or by name when there's no email), newest first:
+ * the total and a few bodies. Given to the AI as context: bots give themselves away across
+ * comments (the same pitch in a different language every time).
+ */
+export async function authorRecent(
+  db: D1Database,
+  author: { email: string; name: string },
+  excludeId = 0,
+): Promise<{ total: number; samples: string[] }> {
+  const byEmail = author.email.trim() !== '';
+  const where = `${byEmail ? 'lower(email) = lower(?1)' : 'name = ?1'} AND id != ?2`;
+  const key = byEmail ? author.email.trim() : author.name;
+  const [count, recent] = await db.batch([
+    db.prepare(`SELECT COUNT(*) AS n FROM comments WHERE ${where}`).bind(key, excludeId),
+    db.prepare(`SELECT body FROM comments WHERE ${where} ORDER BY id DESC LIMIT 3`).bind(key, excludeId),
+  ]);
+  return {
+    total: (count.results[0] as { n: number } | undefined)?.n ?? 0,
+    samples: (recent.results as { body: string }[]).map((r) => r.body),
+  };
+}
+
 export async function powNonceUsed(db: D1Database, nonce: string): Promise<boolean> {
   const row = await db.prepare(`SELECT 1 AS hit FROM comments WHERE pow_nonce = ? LIMIT 1`).bind(nonce).first();
   return !!row;

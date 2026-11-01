@@ -31,10 +31,12 @@ const NEUTRAL: SpamSignals = {
   duplicate: false,
 };
 
-async function scanOne(row: CommentRow, ai: Ai | null, rules: SpamRule[], posts: PostContext) {
+async function scanOne(db: D1Database, row: CommentRow, ai: Ai | null, rules: SpamRule[], posts: PostContext) {
   const post = posts[row.post_id];
+  const history = ai ? await store.authorRecent(db, { email: row.email ?? '', name: row.name }, row.id) : undefined;
   const result: AiResult | null = ai
     ? await aiSpamCheck(ai, {
+        history,
         name: row.name,
         url: row.url ?? '',
         email: row.email ?? '',
@@ -61,18 +63,18 @@ export async function rescanBatch(
   if (!rows.length) return { checked: 0, flagged: 0, next: null, remaining: 0, ai: !!ai };
 
   // Probe with the first row: if the model is down (or out of quota), carry on rules-only.
-  const first = await scanOne(rows[0], ai, rules, posts);
+  const first = await scanOne(db, rows[0], ai, rules, posts);
   const useAi = ai && first.result ? ai : null;
   const scanned = [first];
   for (let i = 1; i < rows.length; i += concurrency) {
-    scanned.push(...(await Promise.all(rows.slice(i, i + concurrency).map((r) => scanOne(r, useAi, rules, posts)))));
+    scanned.push(...(await Promise.all(rows.slice(i, i + concurrency).map((r) => scanOne(db, r, useAi, rules, posts)))));
   }
 
   let flagged = 0;
   for (const { row, result, verdict } of scanned) {
     if (verdict.isSpam) flagged++;
     await store.saveScan(db, row.id, {
-      aiSpam: result?.spam ?? null,
+      aiSpam: result ? 1 - result.reader : null,
       aiKind: result?.kind ?? null,
       spam: verdict.isSpam,
       score: verdict.score,

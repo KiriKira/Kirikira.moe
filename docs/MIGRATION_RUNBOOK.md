@@ -205,6 +205,7 @@ Zero Trust → Access → Applications → Add → Self-hosted：
 
 - 新评论：通过隐形计算验证、蜜罐、时间检查后，交给 Clef-flash 判断，结果和规则分数叠加（见 README「评论反垃圾」）。
 - 旧评论：迁移脚本导入时已按规则判过一遍（报告里的「imported as spam」）。之后打开 `/admine/comments`，点「重新检查全部公开评论」，会用规则 + AI 分批重判全部公开评论，判为垃圾的移到「垃圾」列表，可以随时恢复；AI 不可用时自动只按规则判。改过规则后可以再跑。
+- 验证提示词：`CLOUDFLARE_ACCOUNT_ID=… CLOUDFLARE_API_TOKEN=…（Workers AI 权限） node scripts/eval/eval-spam.ts --compare`，对 `scripts/eval/spam-samples.json` 打分并对比旧的多题提示词；结果里「hides N genuine」必须是 0 才合并。被判错的真实评论（去掉邮箱）加进样本再跑。
 - 关闭：把 `vars.AI_SPAM_CHECK` 改成 `"off"`。
 - 本地开发（`npm run dev` / `wrangler dev --local`）没有 AI，只按规则判。
 
