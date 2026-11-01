@@ -46,7 +46,8 @@ const qs = (overrides: Record<string, string | number>) => {
   }
   return `?${p}`;
 };
-const time = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', dateStyle: 'short', timeStyle: 'short' });
+const fmt = new Intl.DateTimeFormat('zh-CN', { timeZone: 'UTC', dateStyle: 'short', timeStyle: 'short' });
+const time = { format: (d: Date) => `${fmt.format(d)} UTC` };
 const reasons = (json: string | null) => {
   try {
     return json ? (JSON.parse(json) as string[]) : [];

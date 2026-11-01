@@ -32,17 +32,18 @@ export function groupBy<K>(posts: Post[], keys: (p: Post) => K[]): Map<K, Post[]
   return map;
 }
 
+// All dates are shown in UTC (readers are everywhere); times carry an explicit "UTC".
 const fmt = new Intl.DateTimeFormat('zh-CN', {
-  timeZone: 'Asia/Shanghai',
+  timeZone: 'UTC',
   year: 'numeric',
   month: '2-digit',
   day: '2-digit',
 });
 export const formatDate = (d: Date) => fmt.format(d);
 
-/** "2026年2月27日 15:40", as Django rendered dates on the old site. */
+/** "2026年2月27日 15:40 UTC": the old site's Django format (it also ran in UTC), labelled. */
 const longParts = new Intl.DateTimeFormat('zh-CN', {
-  timeZone: 'Asia/Shanghai',
+  timeZone: 'UTC',
   year: 'numeric',
   month: 'numeric',
   day: 'numeric',
@@ -52,5 +53,5 @@ const longParts = new Intl.DateTimeFormat('zh-CN', {
 });
 export function formatDateTime(d: Date): string {
   const p = Object.fromEntries(longParts.formatToParts(d).map((x) => [x.type, x.value]));
-  return `${p.year}年${p.month}月${p.day}日 ${p.hour}:${p.minute}`;
+  return `${p.year}年${p.month}月${p.day}日 ${p.hour}:${p.minute} UTC`;
 }

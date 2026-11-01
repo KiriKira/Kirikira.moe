@@ -10,15 +10,15 @@ import { z } from 'astro/zod';
 const unset = (v: unknown) => (v === '' || v === null ? undefined : v);
 const optional = <T extends z.ZodTypeAny>(schema: T) => z.preprocess(unset, schema.optional());
 
-/** Dates typed in the CMS arrive without an offset (`2026-11-01T19:48:00`). Read those as
- * Asia/Shanghai (+08:00), otherwise a post written at 19:48 local counts as 03:48 the next
- * day. Values that already carry Z or ±hh:mm are left alone. */
+/** The site runs on UTC. A date written without an offset (`2026-11-01T19:48:00`, e.g. typed
+ * by hand) is read as UTC rather than the build machine's zone; values that already carry
+ * Z or ±hh:mm are left alone. */
 const localDate = (v: unknown) => {
   if (typeof v !== 'string') return v;
   const s = v.trim();
   if (!s) return undefined;
   const naive = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?)?$/;
-  return naive.test(s) ? `${s.replace(' ', 'T')}+08:00` : s;
+  return naive.test(s) ? `${s.replace(' ', 'T')}Z` : s;
 };
 
 const posts = defineCollection({
