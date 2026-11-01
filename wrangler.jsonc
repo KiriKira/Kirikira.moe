@@ -10,7 +10,11 @@
     "directory": "./dist/client",
     "binding": "ASSETS",
     // Return the prerendered 404 page for unknown static paths.
-    "not_found_handling": "404-page"
+    "not_found_handling": "404-page",
+    // SSR routes (admin pages, comment API) must reach the Worker even for HTML
+    // navigations — otherwise `not_found_handling` intercepts them and the browser
+    // gets the static 404 page while curl (Accept: */*) sees the real response.
+    "run_worker_first": ["/admin/*", "/api/*"]
   },
   "observability": { "enabled": true },
   "d1_databases": [
