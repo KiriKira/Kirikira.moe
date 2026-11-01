@@ -27,7 +27,7 @@ import {
   transformBody,
   type Warning,
 } from './lib.ts';
-import { fingerprintBody } from '../../src/lib/comments/spam.ts';
+import { fingerprintBody, judgeComment } from '../../src/lib/comments/spam.ts';
 
 const { values: args } = parseArgs({
   options: {
@@ -218,6 +218,7 @@ const sqlLines = [
   '-- Idempotent: legacy_id is UNIQUE, so re-running skips rows already imported.',
 ];
 let importedComments = 0;
+let spamComments = 0;
 const orphanComments: number[] = [];
 const commentsPerPost = new Map<number, number>();
 for (const c of comments) {
@@ -227,17 +228,27 @@ for (const c of comments) {
   }
   const createdAt = parseDjangoDate(c.created_time).toISOString();
   const body = (c.text ?? '').replace(/\r\n?/g, '\n');
+  const name = (c.name ?? '').trim() || '匿名';
+  // The old site only rejected "</a>", so years of spam sit in the table. Apply the new
+  // site's content rules now (request-level checks don't exist for old rows) so obvious
+  // spam is imported hidden; the admin's "重新检查" adds the AI pass later.
+  const verdict = judgeComment(
+    { postId: String(c.post_id), parentId: null, name, email: c.email?.trim() ?? '', url: c.url?.trim() ?? '', body },
+    { honeypot: '', pow: 'ok', elapsedMs: null, ipHash: null, recentFromIp: { lastMinute: 0, lastHour: 0 }, duplicate: false },
+  );
+  if (verdict.isSpam) spamComments++;
   sqlLines.push(
-    `INSERT OR IGNORE INTO comments (post_id, parent_id, name, email, url, body, body_fp, status, spam_score, created_at, legacy_id) VALUES (${[
+    `INSERT OR IGNORE INTO comments (post_id, parent_id, name, email, url, body, body_fp, status, spam_score, spam_reasons, created_at, legacy_id) VALUES (${[
       sql(String(c.post_id)),
       'NULL',
-      sql((c.name ?? '').trim() || '匿名'),
+      sql(name),
       sql(c.email?.trim() || null),
       sql(c.url?.trim() || null),
       sql(body),
       sql(fingerprintBody(body)),
-      sql('published'),
-      0,
+      sql(verdict.isSpam ? 'spam' : 'published'),
+      verdict.score,
+      sql(verdict.reasons.length ? JSON.stringify(verdict.reasons) : null),
       sql(createdAt),
       c.id,
     ].join(', ')});`,
@@ -288,6 +299,7 @@ report.push(
   `| posts with music | ${musicByPost.size} |`,
   `| comments in DB | ${comments.length} |`,
   `| comments exported to SQL | ${importedComments} |`,
+  `| ...of which imported as spam (hidden, restorable in /admine/comments) | ${spamComments} |`,
   `| orphan comments (post missing, skipped) | ${orphanComments.length} |`,
   `| redirect rules | ${redirects.length} |`,
   `| distinct image URLs | ${images.size} (external: ${externalImages.length}) |`,

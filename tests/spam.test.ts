@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countLinks, extractHosts, fingerprintBody, hasHardReason, judgeComment, MIN_FILL_MS, type SpamSignals } from '../src/lib/comments/spam';
+import { countBareDomains, countLinks, extractHosts, fingerprintBody, hasHardReason, judgeComment, MIN_FILL_MS, type SpamSignals } from '../src/lib/comments/spam';
 import type { CommentInput, SpamRule } from '../src/lib/comments/types';
 
 const input = (over: Partial<CommentInput> = {}): CommentInput => ({
@@ -150,5 +150,66 @@ describe('AI signal (Clef-flash)', () => {
   it('recognises hard reasons', () => {
     expect(hasHardReason(['links:2', 'pow:missing'])).toBe(true);
     expect(hasHardReason(['links:2', 'no-cjk-with-link'])).toBe(false);
+  });
+});
+
+/** Real spam from the old site's database (admin screenshots), and real-looking good comments. */
+describe('legacy spam samples and false positives', () => {
+  const old = (name: string, url: string, body: string, email = '') => input({ name, url, body, email });
+  const neutral = signals({ ipHash: null });
+
+  const SPAM = [
+    old('SEOSolutionVIP Fiverr', 'http://steeldirectory.homedirectory.biz/details.php?id=306965',
+      'Wnr.ai is a creative AI tool that generates thought-provoking prompts to ignite your imagination.', 'hoseagrissom@att.net'),
+    old('buy potentstream', 'https://www.quora.com/profile/Rajiv-Ranjan-Kumar-114/PotentStream-Supplements-A-Comprehensive-Review',
+      'I have been exploring for a little for any high-quality articles or weblog posts in this kind of house .\nExploring in Yahoo I eventually stumbled upon this site.\nStudying this information So i\'m happy to express that I have an incredibly just right uncanny feeling I found out exactly what I needed.',
+      'kylestowers@orange.fr'),
+    old('Melvingob', 'https://dailyheraldnewstoday.com',
+      "Top News Sites for article Post\n\nchinaworldnewstoday.com\nchroniclenewstoday.com\ncnbcnewstoday.com\ncnnworldtoday.com\ncrunchbasenewstoday.com\ndailyexpressnewstoday.com\n\nDon't hesiate to conatct us.",
+      'salina.desuza@eunews24x7.com'),
+    old('Raymondtaipt', 'https://rtnewstoday.com',
+      'News Sites for article post\n\nnytimesnewstoday.com\noxfordnewstoday.com\nportugalnewstoday.com\npostgazettenewstoday.com\nrepublicofchinatoday.com\nreuterstoday.com\n\nDont hesiate to contact us',
+      'desuzajohn@eunews24x7.com'),
+    old('online casino', 'https://1winchile-casino.xyz',
+      "Attractive section of content. I just stumbled upon your website and in accession capital to assert that I acquire in fact enjoyed account your blog posts. Anyway I'll be subscribing to your feeds or even I achievement you get admission to constantly fast.",
+      'curt_frei@yahoo.com'),
+    old('Douglasideri', 'https://thequintnewstoday.com',
+      'Top Sites for article Post\n\ntheheraldnewstoday.com\ntheindependentnewstoday.com\ntheirishtimesnewstoday.com\ntheirishtimestoday.com\nthemetronewstoday.com\nthemirrornewstoday.com\n\nDont hasiate to contact us',
+      'dzonothoan@eunews24x7.com'),
+  ];
+
+  it.each(SPAM.map((c) => [c.name, c]))('catches "%s" by rules alone', (_, c) => {
+    expect(judgeComment(c, neutral).isSpam).toBe(true);
+  });
+
+  const GOOD = [
+    old('路人', '', '=W='),
+    old('路人', '', '好耶'),
+    old('rin', '', '233333'),
+    old('Kiri的粉丝', '', '谢谢分享，学到了！'),
+    old('Alex', 'https://alex.dev', 'Thanks for the write-up! The MITM section helped me fix my V2Ray config.'),
+    old('Alex', 'https://alex.dev', 'Nice post! I have been using Rime for years too.'),
+    old('xuanwo', 'https://xuanwo.io', '参考 https://github.com/v2ray/v2ray-core 和 https://www.v2fly.org 的文档'),
+    old('Best', '', '这篇太好笑了 hhh'),
+    old('Online Judge 爱好者', '', '请问 V2Ray 的 MITM 配置在新版本还能用吗？'),
+  ];
+
+  it.each(GOOD.map((c) => [c.body, c]))('never flags "%s", with or without AI', (_, c) => {
+    expect(judgeComment(c, neutral).isSpam).toBe(false);
+    // Even if the model wrongly calls a short harmless comment generic/commercial.
+    const shaky = { spam: 0.5, kind: null, generic: 0.95, commercial: 0.9, onTopic: 0.05 };
+    if (!c.url && [...c.body].length <= 60 && countLinks(c.body) === 0) expect(judgeComment(c, signals({ ipHash: null, ai: shaky })).isSpam).toBe(false);
+  });
+
+  it('uses the AI side questions for payload-carrying comments', () => {
+    const c = old('Mike', 'https://mikes-blog.example', 'Interesting thoughts, thank you.'); // no-cjk-with-link: 60
+    expect(judgeComment(c, signals({ ai: { spam: 0.3, kind: null, commercial: 0.8 } })).isSpam).toBe(true);
+    expect(judgeComment(c, signals({ ai: { spam: 0.3, kind: null, generic: 0.9, onTopic: 0.1 } })).isSpam).toBe(true);
+    expect(judgeComment(c, signals({ ai: { spam: 0.3, kind: null, generic: 0.9, onTopic: 0.8 } })).isSpam).toBe(false);
+  });
+
+  it('counts bare domains but not ones inside URLs', () => {
+    expect(countBareDomains('a.com b.net c.org')).toBe(3);
+    expect(countBareDomains('https://a.com/x and https://b.net')).toBe(0);
   });
 });

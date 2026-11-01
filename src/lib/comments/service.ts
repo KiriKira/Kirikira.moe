@@ -28,7 +28,8 @@ export interface SubmitContext {
   threadExists: (postId: string) => Promise<boolean>;
   /** Workers AI binding when the AI check is enabled; omit to judge by rules only. */
   ai?: Ai | null;
-  postTitle?: (postId: string) => Promise<string | undefined>;
+  /** Title and summary of the post, given to the AI to judge relevance. */
+  postContext?: (postId: string) => Promise<{ title: string; excerpt?: string } | undefined>;
   now?: number;
 }
 
@@ -81,11 +82,14 @@ export async function submitComment(raw: Record<string, unknown>, ctx: SubmitCon
   // free quota, and a hard failure is spam whatever the model thinks.
   let ai: AiResult | null = null;
   if (ctx.ai && !hasHardReason(verdict.reasons)) {
+    const post = await ctx.postContext?.(input.postId);
     ai = await aiSpamCheck(ctx.ai, {
       name: input.name,
       url: input.url,
+      email: input.email,
       body: input.body,
-      postTitle: await ctx.postTitle?.(input.postId),
+      postTitle: post?.title,
+      postExcerpt: post?.excerpt,
     });
     if (ai) verdict = judgeComment(input, { ...signals, ai }, rules);
   }
