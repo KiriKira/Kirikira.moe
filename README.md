@@ -7,7 +7,7 @@ Kiri 的博客。2026 年从 Django（`legacy/`）重构为 **Astro 7 + Cloudfla
 - **评论**：自托管在 Cloudflare D1，免注册，不用任何第三方验证码。垃圾评论被**静默过滤**：发送者看到「评论成功」且在自己浏览器里能看到，其他人看不到；站长在 `/admine/comments` 审查、恢复或删除（和 CMS 同一个后台、同一次登录；未登录访问 `/admine` 只会看到 404）。
 - 旧链接（`/post/<id>/`、`/page/<n>/`、`/category/<id>/`、`/rss/`、`/sitemap.xml`）全部保留或 301。
 
-迁移步骤见 **[docs/MIGRATION_RUNBOOK.md](docs/MIGRATION_RUNBOOK.md)**，设计与选型见 [docs/MIGRATION_PLAN.md](docs/MIGRATION_PLAN.md)。
+迁移、发布与事故处理见 **[docs/MIGRATION_RUNBOOK.md](docs/MIGRATION_RUNBOOK.md)**，设计与选型见 [docs/MIGRATION_PLAN.md](docs/MIGRATION_PLAN.md)。
 
 ## 写文章：图片、视频、嵌入
 
@@ -49,6 +49,8 @@ npm run dev                             # http://localhost:4321 （本地后台�
 npm test                                # 单元测试（反垃圾规则、PoW、渲染、迁移转换）
 npx astro check                         # 类型检查
 npm run preview                         # 构建后用 wrangler 以生产模式运行（http://localhost:8787）
+npm run deploy                          # 构建 + 安全发布：先上传不接流量的新版本 → 冒烟测试 → 切流量 → 再验证，失败自动回滚
+npm run smoke -- https://kirikira.moe   # 随时检查线上是否真的可用（不是「构建成功」）
 ```
 
 ## 目录
