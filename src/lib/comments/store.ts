@@ -161,16 +161,26 @@ export async function purgeOldSpam(db: D1Database, days: number, now = Date.now(
   return res.meta.changes ?? 0;
 }
 
-// ---------- AI re-scan of existing comments ----------
+// ---------- re-scan of existing comments ----------
 
-export async function listUnscanned(db: D1Database, limit: number): Promise<CommentRow[]> {
+/** Published comments after `afterId`, oldest first: the re-scan walks the table with this cursor. */
+export async function listPublishedAfter(db: D1Database, afterId: number, limit: number): Promise<CommentRow[]> {
   const { results } = await db
-    .prepare(`SELECT * FROM comments WHERE status = 'published' AND ai_checked_at IS NULL ORDER BY id LIMIT ?`)
-    .bind(limit)
+    .prepare(`SELECT * FROM comments WHERE status = 'published' AND id > ? ORDER BY id LIMIT ?`)
+    .bind(afterId, limit)
     .all<CommentRow>();
   return results;
 }
 
+export async function countPublishedAfter(db: D1Database, afterId: number): Promise<number> {
+  const row = await db
+    .prepare(`SELECT COUNT(*) AS n FROM comments WHERE status = 'published' AND id > ?`)
+    .bind(afterId)
+    .first<{ n: number }>();
+  return row?.n ?? 0;
+}
+
+/** Published comments the AI hasn't scored yet (shown as a hint in the admin). */
 export async function countUnscanned(db: D1Database): Promise<number> {
   const row = await db
     .prepare(`SELECT COUNT(*) AS n FROM comments WHERE status = 'published' AND ai_checked_at IS NULL`)
@@ -186,13 +196,17 @@ export async function saveScan(
 ): Promise<void> {
   await db
     .prepare(
-      `UPDATE comments SET ai_spam = ?, ai_kind = ?, ai_checked_at = ?,
+      `UPDATE comments SET ai_spam = COALESCE(?, ai_spam), ai_kind = COALESCE(?, ai_kind),
+         ai_checked_at = CASE WHEN ? IS NULL THEN ai_checked_at ELSE ? END,
          status = CASE WHEN ? THEN 'spam' ELSE status END,
          spam_score = CASE WHEN ? THEN ? ELSE spam_score END,
          spam_reasons = CASE WHEN ? THEN ? ELSE spam_reasons END
        WHERE id = ?`,
     )
-    .bind(scan.aiSpam, scan.aiKind, now, scan.spam ? 1 : 0, scan.spam ? 1 : 0, scan.score, scan.spam ? 1 : 0, JSON.stringify(scan.reasons), id)
+    .bind(
+      scan.aiSpam, scan.aiKind, scan.aiSpam, now,
+      scan.spam ? 1 : 0, scan.spam ? 1 : 0, scan.score, scan.spam ? 1 : 0, JSON.stringify(scan.reasons), id,
+    )
     .run();
 }
 

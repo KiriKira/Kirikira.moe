@@ -48,9 +48,34 @@ const qs = (overrides: Record<string, string | number>) => {
 };
 const fmt = new Intl.DateTimeFormat('zh-CN', { timeZone: 'UTC', dateStyle: 'short', timeStyle: 'short' });
 const time = { format: (d: Date) => `${fmt.format(d)} UTC` };
+const REASON_LABEL: [RegExp, string][] = [
+  [/^honeypot/, '蜜罐字段被填写'],
+  [/^pow:/, '没通过隐形计算验证'],
+  [/^too-fast/, '提交过快'],
+  [/^ip-(burst|flood)/, '同一 IP 短时间多次评论'],
+  [/^html-or-bbcode-link/, 'HTML/BBCode 链接'],
+  [/^links:/, '正文链接多'],
+  [/^no-cjk-with-link/, '无中文且带链接/网址'],
+  [/^url-in-name/, '昵称是网址'],
+  [/^commercial-name/, '昵称像广告词'],
+  [/^bare-domains:/, '正文罗列域名'],
+  [/^boilerplate/, '万能吹捧套话'],
+  [/^mostly-cyrillic/, '大量西里尔字母'],
+  [/^duplicate/, '重复内容'],
+  [/^keyword:/, '内置关键词'],
+  [/^shortener-or-spam-tld/, '短链/垃圾域名后缀'],
+  [/^rule:/, '自定义规则'],
+  [/^ai-commercial:/, 'AI：身份像商家/营销'],
+  [/^ai-generic:/, 'AI：与文章无关的套话'],
+  [/^ai:/, 'AI 垃圾概率'],
+];
 const reasons = (json: string | null) => {
   try {
-    return json ? (JSON.parse(json) as string[]) : [];
+    const list = json ? (JSON.parse(json) as string[]) : [];
+    return list.map((r) => {
+      const label = REASON_LABEL.find(([re]) => re.test(r))?.[1];
+      return label ? `${label}（${r}）` : r;
+    });
   } catch {
     return [];
   }
@@ -74,22 +99,15 @@ const reasons = (json: string | null) => {
       </form>
 
       <form class="ai-scan admin-filters" method="post" action="/admine/api/comments">
-        <input type="hidden" name="action" value="ai-scan" />
+        <input type="hidden" name="action" value="rescan" />
+        <input type="hidden" name="after" value="0" />
         <input type="hidden" name="redirect" value={self} />
-        {
-          aiOn ? (
-            <>
-              <button type="submit" disabled={unscanned === 0}>
-                AI 重新检查公开评论
-              </button>
-              <span class="muted ai-scan-status">
-                {unscanned ? `还有 ${unscanned} 条公开评论没被 AI 检查过（例如旧站迁移的评论）。判为垃圾的会移到「垃圾」，可随时恢复。` : '所有公开评论都已经过 AI 检查。'}
-              </span>
-            </>
-          ) : (
-            <span class="muted">AI 检查未启用（需要 Workers AI 绑定 AI，且 AI_SPAM_CHECK 不为 off）。</span>
-          )
-        }
+        <button type="submit" disabled={counts.published === 0}>重新检查全部公开评论</button>
+        <span class="muted ai-scan-status">
+          用当前的规则{aiOn ? ' + AI（Clef-flash）' : '（AI 未启用，只按规则）'}重新判断全部 {counts.published} 条公开评论，
+          判为垃圾的移到「垃圾」，可随时恢复。改过规则后也可以再跑一次。
+          {aiOn && unscanned > 0 && `其中 ${unscanned} 条还没被 AI 看过。`}
+        </span>
       </form>
 
       <form method="post" action="/admine/api/comments" id="bulk">
@@ -187,15 +205,18 @@ const reasons = (json: string | null) => {
 </Base>
 
 <script>
-  // AI re-scan: run batches until nothing is left, with live progress.
+  // Re-scan: walk all published comments batch by batch (id cursor), with live progress.
   const scanForm = document.querySelector<HTMLFormElement>('form.ai-scan');
   scanForm?.addEventListener('submit', async (event) => {
     event.preventDefault();
     const button = scanForm.querySelector('button')!;
     const status = scanForm.querySelector<HTMLElement>('.ai-scan-status')!;
+    const after = scanForm.querySelector<HTMLInputElement>('input[name="after"]')!;
     button.disabled = true;
+    after.value = '0';
     let checked = 0;
     let flagged = 0;
+    let usedAi = false;
     try {
       for (;;) {
         // getAttribute: the hidden <input name="action"> shadows form.action.
@@ -204,21 +225,20 @@ const reasons = (json: string | null) => {
           headers: { accept: 'application/json' },
           body: new FormData(scanForm),
         });
-        const r = (await res.json()) as { checked: number; flagged: number; remaining: number; error?: string };
-        if (r.error) {
-          status.textContent = r.error === 'ai-unavailable' ? 'Workers AI 暂时不可用（或今日免费额度已用完），稍后再试。' : 'AI 检查未启用。';
-          break;
-        }
+        const r = (await res.json()) as { checked: number; flagged: number; remaining: number; next: number | null; ai: boolean };
         checked += r.checked;
         flagged += r.flagged;
+        usedAi ||= r.ai;
         status.textContent = `已检查 ${checked} 条，判为垃圾 ${flagged} 条，剩余 ${r.remaining} 条…`;
-        if (r.remaining === 0 || r.checked === 0) {
-          status.textContent = `完成：检查 ${checked} 条，${flagged} 条移到了「垃圾」。刷新页面查看。`;
+        if (r.next === null) {
+          status.textContent =
+            `完成：检查 ${checked} 条，${flagged} 条移到了「垃圾」${usedAi ? '' : '（AI 不可用或额度用完，本次只按规则判断）'}。刷新页面查看。`;
           break;
         }
+        after.value = String(r.next);
       }
     } catch {
-      status.textContent = `出错了（已检查 ${checked} 条），可以再点一次继续。`;
+      status.textContent = `出错了（已检查 ${checked} 条），可以再点一次（会从头开始，已移走的不受影响）。`;
     } finally {
       button.disabled = false;
     }

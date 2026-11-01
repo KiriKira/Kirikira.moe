@@ -175,7 +175,7 @@ Zero Trust → Access → Applications → Add → Self-hosted：
 `wrangler.jsonc` 里已绑定 `AI`，部署后自动生效，免费额度足够（每条评论约 1–2 Neuron，免费 10,000 Neuron/天）：
 
 - 新评论：通过隐形计算验证、蜜罐、时间检查后，交给 Clef-flash 判断，结果和规则分数叠加（见 README「评论反垃圾」）。
-- 旧评论：打开 `/admine/comments`，点「AI 重新检查公开评论」，会分批检查所有还没被 AI 看过的公开评论（迁移来的旧评论都在内），判为垃圾的移到「垃圾」列表，可以随时恢复。每次点击后会自动跑完全部批次。
+- 旧评论：迁移脚本导入时已按规则判过一遍（报告里的「imported as spam」）。之后打开 `/admine/comments`，点「重新检查全部公开评论」，会用规则 + AI 分批重判全部公开评论，判为垃圾的移到「垃圾」列表，可以随时恢复；AI 不可用时自动只按规则判。改过规则后可以再跑。
 - 关闭：把 `vars.AI_SPAM_CHECK` 改成 `"off"`。
 - 本地开发（`npm run dev` / `wrangler dev --local`）没有 AI，只按规则判。
 

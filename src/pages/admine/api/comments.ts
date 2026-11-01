@@ -88,12 +88,11 @@ export const POST: APIRoute = async ({ request, redirect, url }) => {
     case 'delete-rule':
       for (const id of ids) await store.deleteRule(env.DB, id);
       break;
-    case 'ai-scan': {
-      // One batch per request; the comments page loops with fetch() and shows progress.
-      if (!isAiEnabled(env)) return Response.json({ checked: 0, flagged: 0, remaining: 0, error: 'ai-disabled' });
-      const threads = await getThreads(env, url).catch(() => ({}) as Record<string, { title: string }>);
-      const titles = Object.fromEntries(Object.entries(threads).map(([id, t]) => [id, t.title]));
-      const result = await rescanBatch(env.DB, env.AI!, titles);
+    case 'rescan': {
+      // One batch per request (cursor in `after`); the comments page loops with fetch().
+      const posts = await getThreads(env, url).catch(() => ({}));
+      const after = Math.max(0, Number(form.get('after')) || 0);
+      const result = await rescanBatch(env.DB, isAiEnabled(env) ? env.AI! : null, posts, after);
       if ((request.headers.get('accept') ?? '').includes('application/json')) return Response.json(result);
       break;
     }

@@ -1,4 +1,4 @@
-export type Threads = Record<string, { url: string; title: string }>;
+export type Threads = Record<string, { url: string; title: string; excerpt?: string }>;
 
 let cache: { at: number; data: Threads } | null = null;
 const TTL_MS = 60_000;

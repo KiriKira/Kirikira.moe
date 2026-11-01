@@ -41,7 +41,7 @@ export const POST: APIRoute = async ({ request, url }) => {
     userAgent: request.headers.get('user-agent'),
     threadExists: async (id) => id in (await getThreads(env, url)),
     ai: isAiEnabled(env) ? env.AI : null,
-    postTitle: async (id) => (await getThreads(env, url))[id]?.title,
+    postContext: async (id) => (await getThreads(env, url))[id],
   });
 
   if (result.status === 400) return json({ errors: result.errors }, { status: 400 });
