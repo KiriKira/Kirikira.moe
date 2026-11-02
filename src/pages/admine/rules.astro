@@ -81,7 +81,7 @@ const KIND_LABEL: Record<string, string> = {
         <input type="hidden" name="action" value="purge-spam" />
         <input type="hidden" name="redirect" value="/admine/rules" />
         <button class="danger" onclick="return confirm('立即永久删除所有垃圾评论？')">立即清空所有垃圾评论</button>
-        <span class="muted">（每天也会自动删除 {env.SPAM_RETENTION_DAYS || 30} 天前的垃圾评论）</span>
+        <span class="muted">（不会自动删除：垃圾评论只隐藏，等你在这里确认后再手动清空）</span>
       </form>
     </section>
   </div>

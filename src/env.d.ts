@@ -13,7 +13,6 @@ interface Env {
   /** Workers AI binding (Clef-flash spam scoring). */
   AI?: Ai;
   AI_SPAM_CHECK?: string;
-  SPAM_RETENTION_DAYS: string;
   /** Reply notifications (src/lib/comments/mail.ts): sender, e.g. "Kiri 的博客 <noreply@kirikira.moe>". */
   MAIL_FROM?: string;
   /** Secret: Resend API key (free plan, 100 emails/day). */

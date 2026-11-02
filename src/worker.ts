@@ -1,6 +1,5 @@
 import { handle } from '@astrojs/cloudflare/handler';
 import { adminGate, isAdminPath } from './lib/access';
-import { purgeOldSpam } from './lib/comments/store';
 
 /** The site's ordinary 404 page, so a locked admin URL looks like any missing page. */
 async function notFound(request: Request, env: Env): Promise<Response> {
@@ -21,10 +20,5 @@ export default {
     out.headers.set('x-robots-tag', 'noindex, nofollow');
     out.headers.set('cache-control', 'no-store');
     return out;
-  },
-
-  async scheduled(_controller, env, ctx) {
-    const days = Number(env.SPAM_RETENTION_DAYS) || 30;
-    ctx.waitUntil(purgeOldSpam(env.DB, days));
   },
 } satisfies ExportedHandler<Env>;

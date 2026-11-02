@@ -29,10 +29,6 @@
       "migrations_dir": "migrations"
     }
   ],
-  "triggers": {
-    // 03:17 UTC daily: purge old spam (see src/worker.ts).
-    "crons": ["17 3 * * *"]
-  },
   "vars": {
     // Cloudflare Access team domain, e.g. "kiri.cloudflareaccess.com". Leave empty to
     // disable JWT checks in local dev ONLY (production refuses admin requests then).
@@ -41,8 +37,6 @@
     "ACCESS_AUD": "",
     // "off" disables the Workers AI spam check (rules and proof of work still apply).
     "AI_SPAM_CHECK": "on",
-    // Days to keep comments marked as spam before the cron job deletes them.
-    "SPAM_RETENTION_DAYS": "30",
     // Reply notification emails (docs/MIGRATION_RUNBOOK.md 7.4). Empty = off. Needs the
     // RESEND_API_KEY secret (free plan), or a "send_email" binding named EMAIL (Workers Paid).
     // e.g. "Kiri 的博客 <noreply@notify.kirikira.moe>"
