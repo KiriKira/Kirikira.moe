@@ -46,7 +46,7 @@
     // Reply notification emails (docs/MIGRATION_RUNBOOK.md 7.4). Empty = off. Needs the
     // RESEND_API_KEY secret (free plan), or a "send_email" binding named EMAIL (Workers Paid).
     // e.g. "Kiri 的博客 <noreply@notify.kirikira.moe>"
-    "MAIL_FROM": "",
+    "MAIL_FROM": "Kiri 的博客 <noreply@notify.kirikira.moe>",
     // Max notification emails per 24 hours (Resend's free plan allows 100/day).
     "MAIL_DAILY_LIMIT": "90"
   }
