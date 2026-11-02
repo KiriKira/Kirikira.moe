@@ -40,6 +40,19 @@ media_libraries:
       raster_image: { format: webp, quality: 85, width: 2400, height: 2400 }
 
 collections:
+  # 分类清单：文章的分类字段从这里取值，可以在 CMS 里直接新建/改名，不必手改配置文件。
+  - name: categories
+    label: 分类清单
+    label_singular: 分类
+    folder: src/data/categories
+    extension: yml
+    format: yml
+    create: true
+    identifier_field: name
+    summary: '{{name}}'
+    slug: '{{fields.name}}'
+    fields:
+      - { name: name, label: 分类名称, widget: string }
   - name: posts
     label: 文章
     label_singular: 文章
@@ -47,9 +60,11 @@ collections:
     extension: md
     format: frontmatter
     create: true
-    description: 新建文章时「文件名」填文章序号（当前最大 54，下一篇 55）。地址就是 /post/序号/，发布后不能再改。
+    description: 新建文章时序号自动分配（当前最大 54，下一篇 55），不用填 slug。地址就是 /post/序号/，发布后不能再改。
+    # 自动编号：文件名取自集合里已有的最大数字 + 1，保存时重算，不会撞号。
     slug:
-      editable: [create]
+      auto_increment: true
+      editable: false
     identifier_field: title
     summary: '{{title}}'
     # Table view columns (large screens): summary = title, plus date / category / draft.
@@ -70,10 +85,14 @@ collections:
       - { name: updated, label: 更新时间 (UTC), widget: datetime, required: false, auto_now: true, input_timezone: utc, output_utc: true, hint: 保存时自动写入当前时间，不用手填 }
       - name: category
         label: 分类
-        widget: select
-        options: ['碎碎念', '无情安利', '流下了没有技术的泪水', 'BABU']
-        default: 碎碎念
-        hint: 要加新分类，改 public/admine/config.yml 的 options（或少见情况告诉 Hermes）
+        widget: relation
+        collection: categories
+        value_field: '{{name}}'
+        display_fields: ['{{name}}']
+        search_fields: ['name']
+        multiple: false
+        required: true
+        hint: 下拉选已有分类；要加新分类，点右边的「+」直接新建，不用改配置文件
       - { name: tags, label: 标签, widget: list, required: false, default: [] }
       - { name: excerpt, label: 摘要, widget: text, required: false, hint: 首页列表与 RSS 中显示 }
       - { name: draft, label: 草稿, widget: boolean, default: false, hint: 草稿不会出现在线上站点 }
