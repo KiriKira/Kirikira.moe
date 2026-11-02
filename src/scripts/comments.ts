@@ -43,6 +43,18 @@ function saveMyComments(thread: string, list: PublicComment[]): void {
 
 // ---------- rendering ----------
 
+/**
+ * Markdown is rendered here, not on the server (see PublicComment). markdown-it is split
+ * into its own chunk and fetched together with the comments, i.e. only when the comment
+ * section comes into view.
+ */
+type RenderFn = (markdown: string) => string;
+let rendererPromise: Promise<RenderFn> | null = null;
+const loadRenderer = () => (rendererPromise ??= import('../lib/comments/render').then((m) => m.renderCommentBody));
+
+/** Comments saved in localStorage by the previous version carry server-rendered `html`. */
+type StoredComment = PublicComment & { html?: string };
+
 const timeFmt = new Intl.DateTimeFormat('zh-CN', {
   timeZone: 'UTC',
   year: 'numeric',
@@ -78,7 +90,7 @@ function insertAfter(ref: Node, node: Node): void {
   ref.parentNode!.insertBefore(node, ref.nextSibling);
 }
 
-function renderComment(c: PublicComment, onReply: (c: PublicComment) => void, parent?: PublicComment): HTMLLIElement {
+function renderComment(c: StoredComment, md: RenderFn, onReply: (c: PublicComment) => void, parent?: PublicComment): HTMLLIElement {
   const li = el('li', 'comment');
   li.id = `comment-${c.id}`;
 
@@ -105,15 +117,16 @@ function renderComment(c: PublicComment, onReply: (c: PublicComment) => void, pa
   add(head, reply);
 
   const body = el('div', 'comment-body');
-  // Server-rendered with raw HTML disabled (markdown-it html:false), so this is safe.
-  body.innerHTML = c.html;
+  // markdown-it with raw HTML disabled (html:false) escapes everything the author typed, so
+  // this is safe; `html` only exists on old local copies, which our server rendered the same way.
+  body.innerHTML = typeof c.body === 'string' ? md(c.body) : (c.html ?? '');
 
   add(main, head, body);
   add(li, avatar, main);
   return li;
 }
 
-function renderList(list: HTMLOListElement, comments: PublicComment[], onReply: (c: PublicComment) => void): void {
+function renderList(list: HTMLOListElement, comments: PublicComment[], md: RenderFn, onReply: (c: PublicComment) => void): void {
   const byId = new Map(comments.map((c) => [c.id, c]));
   // One level of nesting: replies attach to their top-level ancestor.
   const rootOf = (c: PublicComment): PublicComment => {
@@ -135,11 +148,11 @@ function renderList(list: HTMLOListElement, comments: PublicComment[], onReply: 
     return;
   }
   for (const root of roots) {
-    const li = renderComment(root, onReply);
+    const li = renderComment(root, md, onReply);
     const kids = replies.get(root.id);
     if (kids?.length) {
       const ol = el('ol', 'comment-replies');
-      for (const k of kids) add(ol, renderComment(k, onReply, byId.get(k.parentId!)));
+      for (const k of kids) add(ol, renderComment(k, md, onReply, byId.get(k.parentId!)));
       add(li.querySelector('.comment-main')!, ol);
     }
     add(list, li);
@@ -210,6 +223,7 @@ export function initComments(root: HTMLElement): void {
     placeForm();
   });
 
+  let md: RenderFn = (s) => s.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`); // until markdown-it arrives
   const rerender = () => {
     const serverIds = new Set(serverComments.map((c) => c.id));
     // Once a comment of ours is public it no longer needs a local copy.
@@ -218,13 +232,17 @@ export function initComments(root: HTMLElement): void {
     const all = [...serverComments, ...mine];
     count.textContent = all.length ? `(${all.length})` : '';
     insertAfter(home, form); // the list is about to be replaced; don't lose the form with it
-    renderList(list, all, onReply);
+    renderList(list, all, md, onReply);
     placeForm();
   };
 
   const load = async () => {
+    const renderer = loadRenderer().then(
+      (fn) => void (md = fn),
+      () => {}, // offline chunk: keep the escaping fallback
+    );
     try {
-      const res = await fetch(`/api/comments?post=${encodeURIComponent(thread)}`);
+      const [res] = await Promise.all([fetch(`/api/comments?post=${encodeURIComponent(thread)}`), renderer]);
       if (!res.ok) throw new Error(String(res.status));
       const data = (await res.json()) as { comments: PublicComment[]; notify?: boolean };
       serverComments = data.comments;

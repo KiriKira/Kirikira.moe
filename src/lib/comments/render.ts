@@ -1,7 +1,8 @@
 import MarkdownIt from 'markdown-it';
 
 /**
- * Comment Markdown renderer. Raw HTML is disabled, so the output is safe to
+ * Comment Markdown renderer. Runs in the browser only (src/scripts/comments.ts): keeping
+ * markdown-it out of the Worker keeps requests within the free plan's CPU limit. Raw HTML is disabled, so the output is safe to
  * inject; images are shown as plain links (no hotlinked tracking pixels), and
  * every link is marked nofollow/ugc so spam earns no SEO value.
  */

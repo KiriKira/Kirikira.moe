@@ -14,38 +14,6 @@ export async function getComment(db: D1Database, id: number): Promise<CommentRow
   return db.prepare(`SELECT * FROM comments WHERE id = ?`).bind(id).first<CommentRow>();
 }
 
-export async function recentFromIp(
-  db: D1Database,
-  ipHash: string | null,
-  now = Date.now(),
-): Promise<{ lastMinute: number; lastHour: number; spamLastHour: number }> {
-  if (!ipHash) return { lastMinute: 0, lastHour: 0, spamLastHour: 0 };
-  const row = await db
-    .prepare(
-      `SELECT
-         SUM(CASE WHEN created_at >= ?2 THEN 1 ELSE 0 END) AS last_minute,
-         COUNT(*) AS last_hour,
-         SUM(CASE WHEN status = 'spam' THEN 1 ELSE 0 END) AS spam_last_hour
-       FROM comments WHERE ip_hash = ?1 AND created_at >= ?3`,
-    )
-    .bind(ipHash, minutesAgo(now, 1), minutesAgo(now, 60))
-    .first<{ last_minute: number | null; last_hour: number; spam_last_hour: number | null }>();
-  return {
-    lastMinute: row?.last_minute ?? 0,
-    lastHour: row?.last_hour ?? 0,
-    spamLastHour: row?.spam_last_hour ?? 0,
-  };
-}
-
-export async function hasRecentDuplicate(db: D1Database, bodyFp: string, now = Date.now()): Promise<boolean> {
-  if (bodyFp.length < 8) return false; // "+1", "谢谢" etc. are legitimately repeated.
-  const row = await db
-    .prepare(`SELECT 1 AS hit FROM comments WHERE body_fp = ? AND created_at >= ? LIMIT 1`)
-    .bind(bodyFp, minutesAgo(now, 7 * 24 * 60))
-    .first<{ hit: number }>();
-  return !!row;
-}
-
 /**
  * The author's other comments (by email, or by name when there's no email), newest first:
  * the total and a few bodies. Given to the AI as context: bots give themselves away across
@@ -69,9 +37,59 @@ export async function authorRecent(
   };
 }
 
-export async function powNonceUsed(db: D1Database, nonce: string): Promise<boolean> {
-  const row = await db.prepare(`SELECT 1 AS hit FROM comments WHERE pow_nonce = ? LIMIT 1`).bind(nonce).first();
-  return !!row;
+export interface SubmissionContext {
+  /** The proof-of-work nonce was already used by a stored comment (a replayed solution). */
+  nonceUsed: boolean;
+  recentFromIp: { lastMinute: number; lastHour: number; spamLastHour: number };
+  /** Same body (fingerprint) within the last 7 days. */
+  duplicate: boolean;
+  rules: SpamRule[];
+  /** The author's other comments, for the AI (see authorRecent). */
+  history: { total: number; samples: string[] };
+}
+
+/**
+ * Everything the spam checks need to read, in ONE D1 round trip. Each D1 call costs CPU
+ * inside the Worker (request/response serialisation), and the free plan allows 10 ms per
+ * request; seven separate queries were most of a submission's CPU time.
+ */
+export async function submissionContext(
+  db: D1Database,
+  q: { nonce: string | null; ipHash: string | null; bodyFp: string; author: { email: string; name: string } },
+  now = Date.now(),
+): Promise<SubmissionContext> {
+  const byEmail = q.author.email.trim() !== '';
+  const authorWhere = byEmail ? 'lower(email) = lower(?1)' : 'name = ?1';
+  const authorKey = byEmail ? q.author.email.trim() : q.author.name;
+  const [nonce, ip, dup, rules, authorCount, authorSamples] = await db.batch([
+    db.prepare(`SELECT 1 AS hit FROM comments WHERE pow_nonce = ? LIMIT 1`).bind(q.nonce),
+    db
+      .prepare(
+        `SELECT SUM(CASE WHEN created_at >= ?2 THEN 1 ELSE 0 END) AS last_minute, COUNT(*) AS last_hour,
+                SUM(CASE WHEN status = 'spam' THEN 1 ELSE 0 END) AS spam_last_hour
+         FROM comments WHERE ip_hash = ?1 AND created_at >= ?3`,
+      )
+      .bind(q.ipHash, minutesAgo(now, 1), minutesAgo(now, 60)),
+    db.prepare(`SELECT 1 AS hit FROM comments WHERE body_fp = ? AND created_at >= ? LIMIT 1`).bind(q.bodyFp, minutesAgo(now, 7 * 24 * 60)),
+    db.prepare(`SELECT * FROM spam_rules ORDER BY id DESC`),
+    db.prepare(`SELECT COUNT(*) AS n FROM comments WHERE ${authorWhere}`).bind(authorKey),
+    db.prepare(`SELECT body FROM comments WHERE ${authorWhere} ORDER BY id DESC LIMIT 3`).bind(authorKey),
+  ]);
+  const ipRow = ip.results[0] as { last_minute: number | null; last_hour: number; spam_last_hour: number | null } | undefined;
+  return {
+    nonceUsed: q.nonce !== null && nonce.results.length > 0,
+    // An unknown IP can't be rate limited (and NULL matches nothing anyway).
+    recentFromIp: q.ipHash
+      ? { lastMinute: ipRow?.last_minute ?? 0, lastHour: ipRow?.last_hour ?? 0, spamLastHour: ipRow?.spam_last_hour ?? 0 }
+      : { lastMinute: 0, lastHour: 0, spamLastHour: 0 },
+    // "+1", "谢谢" etc. are legitimately repeated.
+    duplicate: q.bodyFp.length >= 8 && dup.results.length > 0,
+    rules: rules.results as SpamRule[],
+    history: {
+      total: (authorCount.results[0] as { n: number } | undefined)?.n ?? 0,
+      samples: (authorSamples.results as { body: string }[]).map((r) => r.body),
+    },
+  };
 }
 
 export async function listRules(db: D1Database): Promise<SpamRule[]> {
@@ -137,13 +155,16 @@ export async function adminList(db: D1Database, query: AdminQuery): Promise<{ ro
   };
 }
 
-export async function countByStatus(db: D1Database): Promise<Record<CommentStatus, number>> {
-  const { results } = await db
-    .prepare(`SELECT status, COUNT(*) AS n FROM comments GROUP BY status`)
-    .all<{ status: CommentStatus; n: number }>();
-  const out: Record<CommentStatus, number> = { published: 0, spam: 0 };
-  for (const r of results) out[r.status] = r.n;
-  return out;
+/** Comments per status, plus published ones the AI hasn't scored yet: one query. */
+export async function countByStatus(db: D1Database): Promise<Record<CommentStatus, number> & { unscanned: number }> {
+  const row = await db
+    .prepare(
+      `SELECT SUM(status = 'published') AS published, SUM(status = 'spam') AS spam,
+              SUM(status = 'published' AND ai_checked_at IS NULL) AS unscanned
+       FROM comments`,
+    )
+    .first<{ published: number | null; spam: number | null; unscanned: number | null }>();
+  return { published: row?.published ?? 0, spam: row?.spam ?? 0, unscanned: row?.unscanned ?? 0 };
 }
 
 const placeholders = (n: number) => Array.from({ length: n }, () => '?').join(',');

@@ -263,6 +263,15 @@ Zero Trust → Access → Applications → Add → Self-hosted：
 
 **建议上线前在预览站演练一次第 2、3 步**，确认自己能在 10 分钟内恢复。
 
+### 1102（Worker exceeded resource limits）
+
+免费计划每个请求只有 **10 ms CPU**（等数据库、等 AI 的时间不算）。超过就是 1102，通常只影响动态请求（评论接口、后台），文章页是静态文件不受影响；而且往往是**操作已经完成、跳转后的那一页超了**，先刷新确认数据。
+
+- 看是哪条路由、用了多少：`npx wrangler tail <worker名> --format json`，找 `"outcome": "exceededCpu"` 和 `cpuTime`；或控制台 → Worker → Observability → Logs，按 outcome 筛选。
+- 代码里已经做的（2026-11）：Worker 里不再渲染 Markdown（评论由浏览器渲染，后台显示原文）；后台页面用不含侧栏/横幅图的轻量布局（`src/layouts/Admin.astro`）；评论列表每页 25 条；提交评论时的检查合并成一次 D1 查询。本地实测后台评论页、评论接口、提交评论都回到了约 10 ms 以内。
+- 以后新增动态页面时同样注意：不要在 Worker 里 import 大库（Markdown、图片处理、全部文章），不要逐条查询数据库。
+- 如果日志里仍然频繁 exceededCpu：升级 Workers Paid（$5/月，每请求 CPU 上限 30 秒，顺带可以用 Cloudflare 自己发通知邮件），代码不用改。
+
 ## 出问题时
 
 | 现象 | 处理 |

@@ -1,0 +1,19 @@
+---
+/**
+ * Admin pages (rendered by the Worker on every request). Same skeleton as the site, minus
+ * the banner picture and the sidebar, whose code (image pipeline, all posts) would cost
+ * CPU on every request.
+ */
+import Shell from './Shell.astro';
+
+interface Props {
+  title: string;
+}
+---
+
+<Shell title={Astro.props.title} noindex>
+  <slot name="head" slot="head" />
+  <main id="main">
+    <slot />
+  </main>
+</Shell>
