@@ -35,12 +35,16 @@ export interface SpamRule {
   created_at: string;
 }
 
-/** What the public API returns for each comment. Never includes email, url or ip. */
+/**
+ * What the public API returns for each comment. Never includes email, url or ip.
+ * `body` is the raw Markdown: the browser renders it (src/lib/comments/render.ts), so the
+ * Worker never loads a Markdown parser (the free plan allows 10 ms CPU per request).
+ */
 export interface PublicComment {
   id: number;
   parentId: number | null;
   name: string;
-  html: string;
+  body: string;
   createdAt: string;
 }
 

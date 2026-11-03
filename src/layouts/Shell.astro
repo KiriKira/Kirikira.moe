@@ -1,0 +1,121 @@
+---
+/**
+ * The page skeleton shared by the site (Base.astro) and the admin (Admin.astro): head,
+ * header, footer and page scripts. Deliberately imports nothing heavy (no content
+ * collections, no image pipeline): admin pages are rendered on demand by the Worker, and the
+ * free plan allows 10 ms CPU per request, including loading the code a page needs.
+ */
+import '../styles/global.css';
+import { SITE } from '../site';
+
+export interface Props {
+  title?: string;
+  description?: string;
+  image?: string;
+  type?: 'website' | 'article';
+  publishedTime?: Date;
+  noindex?: boolean;
+}
+
+const { title, description = SITE.description, image = '/img/kiri.jpg', type = 'website', publishedTime, noindex = false } =
+  Astro.props;
+const fullTitle = title ? `${title} | ${SITE.title}` : `It's me, Kiri! | ${SITE.title}`;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const imageUrl = new URL(image, Astro.site);
+const year = new Date().getFullYear();
+---
+
+<!doctype html>
+<html lang={SITE.lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="alternate" type="application/rss+xml" title={SITE.feedTitle} href="/rss.xml" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#15191c" media="(prefers-color-scheme: dark)" />
+    <meta property="og:site_name" content={SITE.title} />
+    <meta property="og:title" content={title ?? SITE.ogTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content={type} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={imageUrl} />
+    {publishedTime && <meta property="article:published_time" content={publishedTime.toISOString()} />}
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    <script is:inline>
+      // Apply a saved light/dark choice before first paint (no flash). Default: follow the OS.
+      try {
+        const t = localStorage.getItem('kiri:theme');
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+      } catch {}
+    </script>
+    <slot name="head" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">跳到正文</a>
+    <header class="site-header">
+      <div class="container identity">
+        {
+          Astro.slots.has('banner') && (
+            <div class="banner" aria-hidden="true">
+              <slot name="banner" />
+            </div>
+          )
+        }
+        <a class="site-title shake" href="/" title={`${SITE.title} - ${SITE.tagline}`}>{SITE.title}</a>
+        <a class="site-tagline shake" href="/" title={`${SITE.title} - ${SITE.tagline}`}>{SITE.tagline}</a>
+      </div>
+    </header>
+
+    <div class="page">
+      <div class="container">
+        <slot name="top" />
+        <slot />
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <div class="container">
+        <p>
+          Copyright © {SITE.since}-{year} {SITE.author}. Designed by{' '}
+          <a href="http://mythem.es/" target="_blank" rel="noopener">myThem.es</a>.
+        </p>
+        <p>
+          Powered by <a href="https://astro.build/" target="_blank" rel="noopener">Astro</a>,{' '}
+          <a href="https://www.cloudflare.com/" target="_blank" rel="noopener">Cloudflare</a>.
+        </p>
+      </div>
+    </footer>
+
+    <a class="to-top" href="#" aria-label="回到顶部" hidden>↑</a>
+
+    <script>
+      // Back-to-top button after scrolling past ~1.5 screens.
+      const toTop = document.querySelector<HTMLAnchorElement>('.to-top')!;
+      let ticking = false;
+      addEventListener(
+        'scroll',
+        () => {
+          if (ticking) return;
+          ticking = true;
+          requestAnimationFrame(() => {
+            toTop.hidden = scrollY < innerHeight * 1.5;
+            ticking = false;
+          });
+        },
+        { passive: true },
+      );
+      toTop.addEventListener('click', (e) => {
+        e.preventDefault();
+        scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      });
+
+      // The Django site registered a caching service worker; make sure it is gone.
+      navigator.serviceWorker?.getRegistrations().then((regs) => regs.forEach((r) => r.unregister()));
+    </script>
+  </body>
+</html>

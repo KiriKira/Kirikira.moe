@@ -1,5 +1,4 @@
 import { checkPow } from './pow';
-import { renderCommentBody } from './render';
 import { aiSpamCheck, type AiResult } from './ai';
 import { fingerprintBody, hasHardReason, judgeComment, type SpamSignals, type SpamVerdict } from './spam';
 import * as store from './store';
@@ -15,7 +14,7 @@ export function toPublic(row: Pick<CommentRow, 'id' | 'parent_id' | 'name' | 'bo
     id: row.id,
     parentId: row.parent_id,
     name: row.name,
-    html: renderCommentBody(row.body),
+    body: row.body,
     createdAt: row.created_at,
   };
 }
@@ -58,14 +57,13 @@ export async function submitComment(raw: Record<string, unknown>, ctx: SubmitCon
 
   const ipHash = await hashIp(ctx.secret, ctx.ip);
   const pow = await checkPow(raw.pow, ctx.secret, input.postId, now);
-  if (pow.status === 'ok' && pow.nonce && (await store.powNonceUsed(ctx.db, pow.nonce))) pow.status = 'replayed';
-
   const bodyFp = fingerprintBody(input.body);
-  const [recent, duplicate, rules] = await Promise.all([
-    store.recentFromIp(ctx.db, ipHash, now),
-    store.hasRecentDuplicate(ctx.db, bodyFp, now),
-    store.listRules(ctx.db),
-  ]);
+  const { nonceUsed, recentFromIp: recent, duplicate, rules, history } = await store.submissionContext(
+    ctx.db,
+    { nonce: pow.status === 'ok' ? (pow.nonce ?? null) : null, ipHash, bodyFp, author: { email: input.email, name: input.name } },
+    now,
+  );
+  if (nonceUsed) pow.status = 'replayed';
 
   const signals: SpamSignals = {
     honeypot: typeof raw.website === 'string' ? raw.website : '',
@@ -82,10 +80,7 @@ export async function submitComment(raw: Record<string, unknown>, ctx: SubmitCon
   // free quota, and a hard failure is spam whatever the model thinks.
   let ai: AiResult | null = null;
   if (ctx.ai && !hasHardReason(verdict.reasons)) {
-    const [post, history] = await Promise.all([
-      ctx.postContext?.(input.postId),
-      store.authorRecent(ctx.db, { email: input.email, name: input.name }),
-    ]);
+    const post = await ctx.postContext?.(input.postId);
     ai = await aiSpamCheck(ctx.ai, {
       history,
       name: input.name,

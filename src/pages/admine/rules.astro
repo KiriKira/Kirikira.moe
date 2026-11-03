@@ -1,5 +1,5 @@
 ---
-import Base from '../../layouts/Base.astro';
+import Admin from '../../layouts/Admin.astro';
 import AdminNav from '../../components/AdminNav.astro';
 import { env } from '../../lib/env';
 import { adminIdentity } from '../../lib/access';
@@ -21,7 +21,7 @@ const KIND_LABEL: Record<string, string> = {
 };
 ---
 
-<Base title="过滤规则" bare noindex>
+<Admin title="过滤规则">
   <div class="admin">
     <AdminNav current="rules" who={who} />
     <section class="card">
@@ -85,4 +85,4 @@ const KIND_LABEL: Record<string, string> = {
       </form>
     </section>
   </div>
-</Base>
+</Admin>

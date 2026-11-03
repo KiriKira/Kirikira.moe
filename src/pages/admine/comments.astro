@@ -1,10 +1,9 @@
 ---
-import Base from '../../layouts/Base.astro';
+import Admin from '../../layouts/Admin.astro';
 import AdminNav from '../../components/AdminNav.astro';
 import { env } from '../../lib/env';
 import { adminIdentity } from '../../lib/access';
-import { renderCommentBody } from '../../lib/comments/render';
-import { adminList, countByStatus, countUnscanned } from '../../lib/comments/store';
+import { adminList, countByStatus } from '../../lib/comments/store';
 import { AI_KINDS, isAiEnabled } from '../../lib/comments/ai';
 import { getThreads, type Threads } from '../../lib/comments/threads';
 import type { CommentStatus } from '../../lib/comments/types';
@@ -14,7 +13,8 @@ export const prerender = false;
 const who = await adminIdentity(Astro.request, env);
 if (!who) return new Response('Forbidden', { status: 403 });
 
-const PAGE_SIZE = 50;
+// Each rendered row costs CPU, and the free plan allows 10 ms per request.
+const PAGE_SIZE = 25;
 const params = Astro.url.searchParams;
 const statusParam = params.get('status');
 const status: CommentStatus | 'all' = statusParam === 'published' || statusParam === 'spam' ? statusParam : 'all';
@@ -22,11 +22,11 @@ const q = params.get('q')?.trim() ?? '';
 const postId = params.get('post')?.trim() ?? '';
 const page = Math.max(1, Number(params.get('page')) || 1);
 
-const [{ rows, total }, counts, unscanned] = await Promise.all([
+const [{ rows, total }, counts] = await Promise.all([
   adminList(env.DB, { status, q, postId, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
   countByStatus(env.DB),
-  countUnscanned(env.DB),
 ]);
+const unscanned = counts.unscanned;
 const aiOn = isAiEnabled(env);
 const kindLabel = (k: string | null) => (k && k in AI_KINDS ? AI_KINDS[k as keyof typeof AI_KINDS] : '');
 let threads: Threads = {};
@@ -46,6 +46,8 @@ const qs = (overrides: Record<string, string | number>) => {
   }
   return `?${p}`;
 };
+const postLinks = new Map<string, string>();
+const postFilter = (post: string) => postLinks.get(post) ?? (postLinks.set(post, qs({ post, page: '' })), postLinks.get(post)!);
 const fmt = new Intl.DateTimeFormat('zh-CN', { timeZone: 'UTC', dateStyle: 'short', timeStyle: 'short' });
 const time = { format: (d: Date) => `${fmt.format(d)} UTC` };
 const REASON_LABEL: [RegExp, string][] = [
@@ -78,7 +80,7 @@ const reasons = (json: string | null) => {
 };
 ---
 
-<Base title="评论管理" bare noindex>
+<Admin title="评论管理">
   <div class="admin">
     <AdminNav current="comments" who={who} />
     <section class="card">
@@ -142,7 +144,9 @@ const reasons = (json: string | null) => {
                         {c.parent_id && <> · 回复 #{c.parent_id}</>}
                         {c.legacy_id && <> · 旧站 #{c.legacy_id}</>}
                       </div>
-                      <div class="comment-body" set:html={renderCommentBody(c.body)} />
+                      {/* Raw text as typed (links and Markdown visible): what you want when judging spam,
+                          and no Markdown parser in the Worker (10 ms CPU limit on the free plan). */}
+                      <div class="comment-body">{c.body.length > 600 ? `${c.body.slice(0, 600)}…` : c.body}</div>
                     </td>
                     <td>
                       <strong>{c.name}</strong>
@@ -163,7 +167,7 @@ const reasons = (json: string | null) => {
                         <span class="muted">{c.post_id}</span>
                       )}
                       <div>
-                        <a class="muted" href={qs({ post: c.post_id, page: '' })}>
+                        <a class="muted" href={postFilter(c.post_id)}>
                           只看此文
                         </a>
                       </div>
@@ -198,7 +202,7 @@ const reasons = (json: string | null) => {
       </nav>
     </section>
   </div>
-</Base>
+</Admin>
 
 <script>
   // Re-scan: walk all published comments batch by batch (id cursor), with live progress.
