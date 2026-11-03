@@ -231,6 +231,12 @@ Zero Trust → Access → Applications → Add → Self-hosted：
 
 规则：只通知已公开的回复（被判垃圾的不发；在后台把 7 天内的误判回复恢复为公开时会补发）；自己回复自己不发；同一个收件人每天最多 5 封，全站每天最多 `MAIL_DAILY_LIMIT`（默认 90，低于 Resend 免费的 100）；邮件里回复内容是纯文本，只链接到本站的评论；每封都带一键退订（`List-Unsubscribe`）。旧站导入的评论同样会收到通知（有邮箱的话），可随时退订。
 
+**每条新评论都通知你（站长）**：再设一个 secret 就开启（和上面共用发信配置）：
+```sh
+npx wrangler secret put ADMIN_EMAIL      # 你的邮箱；用 secret 是为了不把地址写进公开仓库
+```
+每条评论（公开的，或被判为垃圾隐藏的）都会发一封：标题是「【新评论】」或「【已拦截】」+ 文章名 + 昵称，正文有状态、判定原因、AI 判断、作者昵称/邮箱/网址、评论原文、「查看评论」和「后台处理」链接；评论者留了邮箱的话，直接回复这封邮件就是回复给他。不发的情况：没通过隐形计算验证/蜜罐/时间检查的机器人（不是真浏览器，可能一天上百条，在后台看）、你自己的评论（邮箱和 `ADMIN_EMAIL` 相同）；每天最多 `ADMIN_EMAIL_DAILY_LIMIT`（默认 30）封，把 Resend 免费额度的大头留给读者的回复通知。关闭：`npx wrangler secret delete ADMIN_EMAIL`。
+
 以后升级到 Workers Paid 想改用 Cloudflare 发信：在 Cloudflare 后台为域名开通 Email Service，`wrangler.jsonc` 加 `"send_email": [{ "name": "EMAIL" }]`，删掉 `RESEND_API_KEY` 这个 secret 即可（两者都有时优先用 Resend）。
 关闭：把 `MAIL_FROM` 改回空字符串。
 

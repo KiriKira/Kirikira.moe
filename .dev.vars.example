@@ -5,3 +5,4 @@ ADMIN_TOKEN=local-test-token-123
 # Reply notification emails (off when unset). A real key sends real mail, even locally.
 # MAIL_FROM=Kiri 的博客 <noreply@notify.kirikira.moe>
 # RESEND_API_KEY=re_...
+# ADMIN_EMAIL=you@example.com          # every new comment is emailed here

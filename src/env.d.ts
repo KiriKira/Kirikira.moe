@@ -22,6 +22,10 @@ interface Env {
   EMAIL?: SendEmail;
   /** Max notification emails per 24h (default 90, under Resend's free 100/day). */
   MAIL_DAILY_LIMIT?: string;
+  /** Secret: the owner's address; every new comment (published or caught as spam) is emailed there. */
+  ADMIN_EMAIL?: string;
+  /** Max owner notifications per 24h (default 30). */
+  ADMIN_EMAIL_DAILY_LIMIT?: string;
 }
 
 declare namespace Cloudflare {

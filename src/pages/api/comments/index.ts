@@ -48,6 +48,8 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
 
   if (result.status === 400) return json({ errors: result.errors }, { status: 400 });
   if (result.status === 404) return json({ error: 'post not found' }, { status: 404 });
-  if (result.row && !result.verdict.isSpam) notifyInBackground(locals, url, [result.row]);
+  // Stored comments only (published or spam): the owner hears about both, readers only
+  // about published replies (notify-env.ts decides).
+  if (result.row) notifyInBackground(locals, url, [result.row], { owner: true });
   return json({ ok: true, comment: result.comment });
 };

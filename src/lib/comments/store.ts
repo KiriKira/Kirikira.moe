@@ -272,33 +272,41 @@ export async function optOut(db: D1Database, emailHash: string, now = new Date()
   await db.prepare(`INSERT OR IGNORE INTO email_optouts (email_hash, created_at) VALUES (?, ?)`).bind(emailHash, now).run();
 }
 
-/** Whether a reply already triggered a successful notification (each reply notifies once). */
-export async function wasNotified(db: D1Database, commentId: number): Promise<boolean> {
+export type NotificationKind = 'reply' | 'owner';
+
+/** Whether a comment already triggered a successful notification of this kind (once each). */
+export async function wasNotified(db: D1Database, commentId: number, kind: NotificationKind = 'reply'): Promise<boolean> {
   return !!(await db
-    .prepare(`SELECT 1 AS hit FROM notifications WHERE comment_id = ? AND status = 'sent'`)
-    .bind(commentId)
+    .prepare(`SELECT 1 AS hit FROM notifications WHERE comment_id = ? AND kind = ? AND status = 'sent'`)
+    .bind(commentId, kind)
     .first());
 }
 
-/** Successful sends in the last 24 hours: in total, and to one recipient. */
-export async function sentLastDay(db: D1Database, toHash: string, now = Date.now()): Promise<{ total: number; toRecipient: number }> {
+/** Successful sends in the last 24 hours: in total, to one recipient, and of one kind. */
+export async function sentLastDay(
+  db: D1Database,
+  toHash: string,
+  now = Date.now(),
+  kind: NotificationKind = 'reply',
+): Promise<{ total: number; toRecipient: number; ofKind: number }> {
   const row = await db
     .prepare(
-      `SELECT COUNT(*) AS total, SUM(CASE WHEN to_hash = ?1 THEN 1 ELSE 0 END) AS to_recipient
+      `SELECT COUNT(*) AS total, SUM(CASE WHEN to_hash = ?1 THEN 1 ELSE 0 END) AS to_recipient,
+              SUM(CASE WHEN kind = ?3 THEN 1 ELSE 0 END) AS of_kind
        FROM notifications WHERE status = 'sent' AND created_at >= ?2`,
     )
-    .bind(toHash, minutesAgo(now, 24 * 60))
-    .first<{ total: number; to_recipient: number | null }>();
-  return { total: row?.total ?? 0, toRecipient: row?.to_recipient ?? 0 };
+    .bind(toHash, minutesAgo(now, 24 * 60), kind)
+    .first<{ total: number; to_recipient: number | null; of_kind: number | null }>();
+  return { total: row?.total ?? 0, toRecipient: row?.to_recipient ?? 0, ofKind: row?.of_kind ?? 0 };
 }
 
 export async function logNotification(
   db: D1Database,
-  n: { commentId: number; toHash: string; status: 'sent' | 'failed'; error?: string | null },
+  n: { commentId: number; toHash: string; status: 'sent' | 'failed'; error?: string | null; kind?: NotificationKind },
   now = new Date().toISOString(),
 ): Promise<void> {
   await db
-    .prepare(`INSERT INTO notifications (comment_id, to_hash, status, error, created_at) VALUES (?, ?, ?, ?, ?)`)
-    .bind(n.commentId, n.toHash, n.status, n.error?.slice(0, 500) ?? null, now)
+    .prepare(`INSERT INTO notifications (comment_id, to_hash, status, error, created_at, kind) VALUES (?, ?, ?, ?, ?, ?)`)
+    .bind(n.commentId, n.toHash, n.status, n.error?.slice(0, 500) ?? null, now, n.kind ?? 'reply')
     .run();
 }
