@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # master is the default branch (there is no main). Pushes to migration-preview are
+    # tested by deploy.yml before deploying.
+    branches: [master]
   pull_request:
 
 jobs:

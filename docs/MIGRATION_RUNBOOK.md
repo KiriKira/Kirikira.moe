@@ -116,18 +116,24 @@ openssl rand -hex 32 > /tmp/comment_secret && npx wrangler secret put COMMENT_SE
 > 5. 通过才 `wrangler versions deploy <新版本>@100%`，并更新 cron
 > 6. 再对线上地址冒烟一次；失败则**自动回滚**到上一个版本并再验证
 >
-> 任何一步失败都以非 0 退出，Workers Builds 会把这次构建标红并发邮件。
+> 任何一步失败都以非 0 退出：GitHub Actions 标红并开 issue 通知你（见下）。
 
-**Workers Builds 设置**（Worker → Settings → Build）：
+**自动部署：GitHub Actions**（`.github/workflows/deploy.yml`，不用 Cloudflare Workers Builds）
 
-| 项 | 值 |
-|---|---|
-| Build command | `npm run build` |
-| Deploy command | `npm run deploy:only` |
-| Non-production branch deploy command | `npx wrangler versions upload`（默认值即可，只出预览地址，不影响线上） |
-| Production branch | `master` |
-| Build cache | **关闭**（开着会复用旧的资源哈希，预览站曾因此大面积 404） |
-| Build variables | `SITE_URL=https://kirikira.moe`（**域名绑好之后**再加；没加时用 workers.dev 地址做发布后验证） |
+push 到 `migration-preview`（以后正式站是 `master`）就跑：`npm ci` → `npm test` → `npm run build` → `node scripts/deploy.mjs`。
+每次都是全新环境、不用任何构建缓存，完整日志在 GitHub 的 Actions 页面。Workers Builds 曾经在删文章后构建失败却没有任何提醒（首页和文章页都停在旧版本），所以换掉了。
+
+一次性设置：
+
+1. Cloudflare → My Profile → API Tokens → Create Token → 模板 **Edit Cloudflare Workers**，再加一条权限 **Account · D1 · Edit**；Account Resources 只选你的账户，Zone Resources 选 `kirikira.moe`（绑域名要用）。
+2. GitHub 仓库 → Settings → Secrets and variables → Actions：
+   - Secrets：`CLOUDFLARE_API_TOKEN`（上一步的 token）、`CLOUDFLARE_ACCOUNT_ID`（控制台右侧栏的 Account ID）
+   - Variables：`SITE_URL=https://kirikira.moe`（**域名绑好之后**再加；没加时用 workers.dev 地址做发布后验证）
+3. **停用 Workers Builds**：Worker → Settings → Build → Disconnect。不停的话每次 push 两边各部署一次。
+4. 正式站用 `master` 时：Variables 加 `DEPLOY_MASTER=true`（没加之前 push 到 `master` 不部署，只跑 `ci.yml` 测试）。
+
+失败时（构建、测试、冒烟、发布任何一步）：线上**仍是上一个版本**；commit 显示红 ✗；自动开一个 `deploy-failed` issue，里面有日志末尾和运行链接（GitHub 会按你的通知设置发邮件/App 推送；建议在仓库右上角 Watch 选 All Activity 或至少 Issues）；配置了 `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID` 的话也发 Telegram。下一次部署成功时 issue 自动关闭。
+手动重跑：Actions → Deploy → Run workflow → 选分支。
 
 **第一次部署**（新 Worker 还没有可回滚的版本，只能显式确认）：
 
@@ -161,7 +167,7 @@ Zero Trust → Access → Applications → Add → Self-hosted：
 2. Worker → Settings → Domains & Routes → Add Custom Domain → `kirikira.moe`（如需要也加 `www`，并在 `_redirects` 里加 `www` → 根域的跳转，或用 Cloudflare 的 Redirect Rule）。
 3. 原来指向旧服务器的 A/AAAA 记录会被替换；旧服务器先别关。
 4. 切换后：`npm run smoke -- https://kirikira.moe` 和 `npm run check-urls -- https://kirikira.moe`。
-5. 在 Workers Builds 里加 `SITE_URL=https://kirikira.moe`，以后每次发布都会验证正式域名。
+5. 在 GitHub 仓库 Variables 里加 `SITE_URL=https://kirikira.moe`，以后每次发布都会验证正式域名。
 6. 打开监控：GitHub 仓库 Settings → Secrets and variables → Actions → Variables 加 `WATCHDOG_URL=https://kirikira.moe`
    （可选再加 Secrets `TELEGRAM_BOT_TOKEN`、`TELEGRAM_CHAT_ID`）。`.github/workflows/watchdog.yml` 每 10 分钟检查一次，
    连续两次失败就开一个 `site-down` issue（GitHub 会发邮件/推送）并发 Telegram，恢复后自动关闭。
@@ -178,7 +184,7 @@ Zero Trust → Access → Applications → Add → Self-hosted：
 
 1. GitHub → Settings → Developer settings → Fine-grained token：仅本仓库，权限 Contents: Read and write。
 2. 打开 `https://kirikira.moe/admine/`（受 Access 保护），选择用 token 登录。CMS 左下角的浮动条可以直接跳到「评论管理」「过滤规则」（同一次登录）。
-3. 新建文章时填英文 slug（成为 `/post/<slug>/`，保存后锁定不可改）；保存即提交到 `main`，Workers Builds 约 1–2 分钟后上线。
+3. 新建文章时填英文 slug（成为 `/post/<slug>/`，保存后锁定不可改）；保存即提交到 `master`，GitHub Actions 约 2–3 分钟后上线（Actions 页面可看进度）。
 4. 草稿：勾选「草稿」，线上不会显示，`npm run dev` 里能看到。
 
 ### 7.2 R2 媒体桶（图片/视频）
@@ -220,7 +226,7 @@ Zero Trust → Access → Applications → Add → Self-hosted：
    ```sh
    npx wrangler secret put RESEND_API_KEY      # 粘贴 re_... ；只存在 Cloudflare，不进仓库
    ```
-3. 在 `wrangler.jsonc` 的 `vars` 里填发件人并提交（Workers Builds 自动部署）：
+3. 在 `wrangler.jsonc` 的 `vars` 里填发件人并提交（GitHub Actions 自动部署）：
    ```jsonc
    "MAIL_FROM": "Kiri 的博客 <noreply@notify.kirikira.moe>"
    ```
@@ -264,7 +270,7 @@ npx wrangler secret put ADMIN_EMAIL      # 你的邮箱；用 secret 是为了�
    npm run smoke -- https://kirikira-moe-b.<子域>.workers.dev
    ```
    冒烟通过后：控制台 → 旧 Worker → Domains & Routes 移除 `kirikira.moe` → 新 Worker 添加 `kirikira.moe`（约 1 分钟生效），
-   Access 应用不用改（它按域名路径保护），然后把 Workers Builds 连到新 Worker 或把仓库里的 name 正式改过去。
+   Access 应用不用改（它按域名路径保护），然后把仓库里的 name 正式改过去。
 4. 事后：在 `site-down` issue 里记录原因和处理，以后发布照常走 `scripts/deploy.mjs`。
 
 **建议上线前在预览站演练一次第 2、3 步**，确认自己能在 10 分钟内恢复。

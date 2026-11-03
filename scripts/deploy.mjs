@@ -29,8 +29,8 @@
  *    promote    -> `wrangler versions deploy <id>@100%`, then cron triggers
  *    verify     -> smoke the live URL; on failure roll back to the previous version
  *
- * Exits non-zero whenever production is not on a verified version, so Workers Builds
- * (or CI) reports the failure and notifies.
+ * Exits non-zero whenever production is not on a verified version, so the CI run
+ * (.github/workflows/deploy.yml) fails, opens a deploy-failed issue and notifies.
  */
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';

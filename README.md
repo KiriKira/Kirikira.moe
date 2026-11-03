@@ -3,7 +3,7 @@
 Kiri 的博客。2026 年从 Django（`legacy/`）重构为 **Astro 7 + Cloudflare Workers**：
 
 - **文章**：`src/content/posts/*.md`（Markdown + front matter），构建时预渲染为静态页。
-- **在线编辑**：`/admine/` 上的 [Sveltia CMS](https://sveltiacms.app/)，保存即提交到 GitHub，Cloudflare Workers Builds 自动构建部署（1–2 分钟），本地不用编译。
+- **在线编辑**：`/admine/` 上的 [Sveltia CMS](https://sveltiacms.app/)，保存即提交到 GitHub，GitHub Actions 自动构建部署（1–2 分钟），本地不用编译。
 - **评论**：自托管在 Cloudflare D1，免注册，不用任何第三方验证码。垃圾评论被**静默过滤**：发送者看到「评论成功」且在自己浏览器里能看到，其他人看不到；站长在 `/admine/comments` 审查、恢复或删除（和 CMS 同一个后台、同一次登录；未登录访问 `/admine` 只会看到 404）。点评论旁的「↩ 回复」，输入框会出现在那条评论下面；回复会标出「回复 @某人」，点它跳到被回复的那条。被回复的人留了邮箱的话会收到邮件通知，你也可以让每条新评论（包括被拦截的垃圾）都发邮件给自己（可选功能，配置见 [runbook 7.4](docs/MIGRATION_RUNBOOK.md#74-回复邮件通知可选默认关闭)）。
 - 旧链接（`/post/<id>/`、`/page/<n>/`、`/category/<id>/`、`/rss/`、`/sitemap.xml`）全部保留或 301。
 
