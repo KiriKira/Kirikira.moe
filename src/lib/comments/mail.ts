@@ -18,6 +18,8 @@ export interface MailMessage {
   text: string;
   html: string;
   headers?: Record<string, string>;
+  /** Where "Reply" in the mail client goes (e.g. the commenter, in the owner's notification). */
+  replyTo?: string;
   /** Same key => the provider sends at most once (Resend honours it for 24h). */
   idempotencyKey?: string;
 }
@@ -45,7 +47,10 @@ export function getMailer(env: MailEnv, fetchImpl: typeof fetch = fetch): Mailer
             'content-type': 'application/json',
             ...(m.idempotencyKey ? { 'idempotency-key': m.idempotencyKey } : {}),
           },
-          body: JSON.stringify({ from, to: [m.to], subject: m.subject, text: m.text, html: m.html, headers: m.headers }),
+          body: JSON.stringify({
+            from, to: [m.to], subject: m.subject, text: m.text, html: m.html, headers: m.headers,
+            ...(m.replyTo ? { reply_to: m.replyTo } : {}),
+          }),
         });
         if (!res.ok) throw new Error(`Resend ${res.status}: ${(await res.text()).slice(0, 300)}`);
       },
@@ -57,7 +62,10 @@ export function getMailer(env: MailEnv, fetchImpl: typeof fetch = fetch): Mailer
     return {
       provider: 'cloudflare',
       async send(m) {
-        await binding.send({ from, to: m.to, subject: m.subject, text: m.text, html: m.html, headers: m.headers });
+        await binding.send({
+          from, to: m.to, subject: m.subject, text: m.text, html: m.html, headers: m.headers,
+          ...(m.replyTo ? { replyTo: m.replyTo } : {}),
+        });
       },
     };
   }

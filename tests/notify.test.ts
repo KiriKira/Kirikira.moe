@@ -3,7 +3,10 @@ import { createD1 } from './helpers/d1';
 import * as store from '../src/lib/comments/store';
 import { getMailer, type MailMessage, type Mailer } from '../src/lib/comments/mail';
 import {
+  composeOwnerEmail,
   composeReplyEmail,
+  DEFAULT_OWNER_DAILY_LIMIT,
+  notifyOwner,
   emailHash,
   notifyReply,
   PER_RECIPIENT_PER_DAY,
@@ -156,6 +159,9 @@ describe('getMailer', () => {
     expect(url).toBe('https://api.resend.com/emails');
     expect((init.headers as Record<string, string>)['idempotency-key']).toBe('reply-1');
     expect(JSON.parse(init.body as string)).toMatchObject({ from: 'Kiri <noreply@kirikira.moe>', to: ['a@example.com'] });
+    await m.send({ to: 'a@example.com', subject: 's', text: 't', html: 'h', replyTo: 'reader@example.com' });
+    const [, init2] = fetchMock.mock.calls[1] as unknown as [string, RequestInit];
+    expect(JSON.parse(init2.body as string).reply_to).toBe('reader@example.com');
   });
 
   it('reports Resend errors', async () => {
@@ -177,5 +183,77 @@ describe('notify preference in the form', () => {
   it('defaults to on and accepts an explicit opt-out', () => {
     expect(validateComment(base).ok && validateComment(base)).toMatchObject({ value: { notify: true } });
     expect(validateComment({ ...base, notify: false })).toMatchObject({ value: { notify: false } });
+  });
+});
+
+describe('notifyOwner (every new comment, to ADMIN_EMAIL)', () => {
+  const OWNER = 'kiri@kirikira.moe';
+  const owner = () => ({ ...ctx, ownerEmail: OWNER });
+
+  it('reports a published comment with a link and replies go to the commenter', async () => {
+    const c = await comment({ name: 'Alice', email: 'alice@example.com', url: 'https://alice.dev', body: '写得真好\n第二行' });
+    expect(await notifyOwner(owner(), c)).toBe('sent');
+    const m = sent[0];
+    expect(m.to).toBe(OWNER);
+    expect(m.subject).toBe('【新评论】《V2Ray 的 MITM 功能》· Alice');
+    expect(m.replyTo).toBe('alice@example.com');
+    expect(m.text).toContain('状态：已公开');
+    expect(m.text).toContain('邮箱：alice@example.com');
+    expect(m.text).toContain('网址：https://alice.dev');
+    expect(m.text).toContain('写得真好\n第二行');
+    expect(m.text).toContain(`查看：https://kirikira.moe/post/12/#comment-${c.id}`);
+    expect(m.text).toContain('后台处理（恢复/标为垃圾/删除）：https://kirikira.moe/admine/comments?post=12&status=published');
+    expect(m.idempotencyKey).toBe(`owner-${c.id}`);
+  });
+
+  it('reports spam caught by the content checks, with the reasons and the AI verdict', async () => {
+    const c = await comment({
+      name: 'buy potentstream', status: 'spam', spam_score: 160, ai_spam: 0.92, ai_kind: 'promotion',
+      spam_reasons: JSON.stringify(['no-cjk-with-link', 'ai:reader=0.08:promotion']),
+    });
+    expect(await notifyOwner(owner(), c)).toBe('sent');
+    const m = sent[0];
+    expect(m.subject).toBe('【已拦截】《V2Ray 的 MITM 功能》· buy potentstream');
+    expect(m.text).toContain('状态：判为垃圾，已隐藏（只有对方自己看得到）· 分数 160');
+    expect(m.text).toContain('原因：无中文且带链接/网址（no-cjk-with-link）；AI 判断（ai:reader=0.08:promotion）');
+    expect(m.text).toContain('AI：不是真实读者的概率 92%（推广/外链）');
+    expect(m.text).not.toContain('查看：');
+    expect(m.text).toContain('status=spam');
+    expect(m.replyTo).toBeUndefined();
+  });
+
+  it('skips bots that failed the hard checks, the owner\'s own comments, and when off', async () => {
+    const bot = await comment({ status: 'spam', spam_score: 200, spam_reasons: JSON.stringify(['pow:missing', 'honeypot']) });
+    expect(await notifyOwner(owner(), bot)).toBe('bot');
+    expect(await notifyOwner(owner(), await comment({ email: 'Kiri@KiriKira.moe' }))).toBe('own-comment');
+    expect(await notifyOwner(ctx, await comment())).toBe('off');
+    expect(await notifyOwner({ ...owner(), mailer: null }, await comment())).toBe('off');
+    expect(sent).toHaveLength(0);
+  });
+
+  it('is capped per day without blocking readers\' reply emails', async () => {
+    for (let i = 0; i < 2; i++) expect(await notifyOwner({ ...owner(), ownerDailyLimit: 2 }, await comment())).toBe('sent');
+    expect(await notifyOwner({ ...owner(), ownerDailyLimit: 2 }, await comment())).toBe('daily-limit');
+    const parent = await comment({ email: 'reader@example.com' });
+    expect(await notifyReply(owner(), await comment({ parent_id: parent.id }))).toBe('sent');
+    expect(DEFAULT_OWNER_DAILY_LIMIT).toBeLessThan(90);
+  });
+
+  it('can notify the owner and the replied-to reader about the same comment', async () => {
+    const parent = await comment({ email: 'reader@example.com' });
+    const reply = await comment({ parent_id: parent.id, name: 'Bob' });
+    expect(await notifyOwner(owner(), reply)).toBe('sent');
+    expect(await notifyReply(owner(), reply)).toBe('sent');
+    expect(sent.map((m) => m.to)).toEqual([OWNER, 'reader@example.com']);
+  });
+
+  it('escapes the comment in the HTML version', () => {
+    const m = composeOwnerEmail({
+      siteName: 'Kiri 的博客', postTitle: 'T', link: 'https://kirikira.moe/post/1/#comment-1', admin: 'https://kirikira.moe/admine/comments',
+      comment: { id: 1, parent_id: null, name: '<b>Eve</b>', email: null, url: null, body: '<script>x</script>', status: 'published', spam_score: 0, spam_reasons: null, ai_spam: null, ai_kind: null },
+    });
+    expect(m.html).not.toContain('<script>');
+    expect(m.html).toContain('&lt;script&gt;');
+    expect(m.html).toContain('&lt;b&gt;Eve&lt;/b&gt;');
   });
 });
