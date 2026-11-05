@@ -222,6 +222,26 @@ def pass_unstick_media(lines: list[str]) -> tuple[list[str], int]:
     return out, n
 
 
+def pass_join_groups(lines: list[str]) -> tuple[list[str], int]:
+    """Images separated only by blank lines are still consecutive: blank lines must not split
+    a gallery. Only real text (or a heading) breaks the run."""
+    out = []
+    merged = 0
+    i = 0
+    while i < len(lines):
+        out.append(lines[i])
+        if MD_MEDIA.match(lines[i].strip()) and not lines[i].startswith(' '):
+            j = i + 1
+            while j < len(lines) and not lines[j].strip():
+                j += 1
+            if j < len(lines) and MD_MEDIA.match(lines[j].strip()) and not lines[j].startswith(' '):
+                merged += j - i - 1
+                i = j
+                continue
+        i += 1
+    return out, merged
+
+
 def pass_videos(lines: list[str]) -> tuple[list[str], int]:
     out, n = [], 0
     for line in lines:
@@ -264,7 +284,7 @@ def main() -> int:
     args = sys.argv[1:]
     write = '--check' not in args
     targets = [a for a in args if not a.startswith('--')] or sorted(glob.glob('src/content/posts/*.md'))
-    totals = {'images': 0, 'captions': 0, 'videos': 0, 'titles': 0, 'joined': 0, 'comments': 0, 'divs': 0, 'unstick': 0, 'blanks': 0}
+    totals = {'images': 0, 'captions': 0, 'videos': 0, 'titles': 0, 'joined': 0, 'comments': 0, 'divs': 0, 'unstick': 0, 'grouped': 0, 'blanks': 0}
     for path in targets:
         raw = open(path, encoding='utf-8').read()
         lines = raw.split('\n')
@@ -277,6 +297,7 @@ def main() -> int:
         lines, n_comment = pass_strip_comments(lines)
         lines, n_div = pass_orphan_divs(lines)
         lines, n_unstick = pass_unstick_media(lines)
+        lines, n_group = pass_join_groups(lines)
         lines, n_blank = pass_spacing(lines)
         new = '\n'.join(lines)
         totals['images'] += n_img
@@ -287,6 +308,7 @@ def main() -> int:
         totals['comments'] += n_comment
         totals['divs'] += n_div
         totals['unstick'] += n_unstick
+        totals['grouped'] += n_group
         totals['blanks'] += n_blank
         if write and new != raw:
             open(path, 'w', encoding='utf-8').write(new)
