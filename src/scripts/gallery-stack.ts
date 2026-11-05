@@ -76,25 +76,28 @@ export function enhanceGallery(gallery: Gallery): void {
     }
     status.appendChild(box);
   }
-  const caption = el('p', 'gallery-caption');
   // appendChild, not append(): the Workers types sharing this tsconfig redeclare Element.append.
   for (const node of [prev, status, next]) bar.appendChild(node);
-  gallery.appendChild(bar);
-  gallery.appendChild(caption);
+  // Captions come from the build in one slot (as tall as the longest); the bar goes above it.
+  const captionSlot = gallery.querySelector<HTMLElement>(':scope > .gallery-captions');
+  const captions = captionSlot ? [...captionSlot.children] : [];
+  gallery.insertBefore(bar, captionSlot);
   gallery.classList.add('is-stack');
   cards.forEach((card, i) => card.style.setProperty('--tilt', `${i % 2 ? -2.2 : 2.6}deg`));
 
-  // ---- layout: every card fits the stage; the stage is as tall as the tallest card ----
+  // ---- layout: every card fits inside the stage ----
+  // The stage's height is fixed by CSS from the HTML alone (global.css, .gallery-track), so
+  // flipping or images loading never move the text below. Cards are sized to fit it: the
+  // same width rule as the CSS, and at most the stage's height minus room for peeking.
+  // Both come from the ResizeObserver: reading clientWidth here would force a layout per
+  // gallery (a post with 91 galleries spent ~250 ms on that alone).
   const sizes: { w: number; h: number }[] = cards.map(() => ({ w: 0, h: 0 }));
-  // The width comes from the ResizeObserver: reading clientWidth here would force a layout
-  // per gallery (a post with 91 galleries spent ~250 ms on that alone).
   let width = 0;
+  let height = 0;
   function layout() {
-    if (!width) return;
-    const narrow = width < 520;
-    const maxW = width * (narrow ? 0.86 : 0.8);
-    const maxH = Math.min(narrow ? 420 : 460, window.innerHeight * 0.62);
-    let tallest = 0;
+    if (!width || !height) return;
+    const maxW = width * (width < 520 ? 0.86 : 0.8);
+    const maxH = Math.max(40, height - 34);
     cards.forEach((card, i) => {
       const r = ratios[i] || 4 / 3;
       let w = maxW;
@@ -106,11 +109,7 @@ export function enhanceGallery(gallery: Gallery): void {
       card.style.setProperty('--cw', `${Math.round(w)}px`);
       card.style.setProperty('--ch', `${Math.round(h)}px`);
       sizes[i] = { w, h };
-      tallest = Math.max(tallest, h);
     });
-    // As tall as the tallest card, so the page never jumps while flipping; plus room for
-    // the cards peeking out.
-    stage.style.setProperty('--sh', `${Math.round(tallest + 34)}px`);
     paint();
   }
 
@@ -143,9 +142,7 @@ export function enhanceGallery(gallery: Gallery): void {
     });
     count.textContent = `${current + 1} / ${n}`;
     dots.forEach((d, i) => d.setAttribute('aria-current', String(i === current)));
-    const text = cards[current].querySelector('figcaption')?.textContent?.trim() ?? '';
-    caption.textContent = text;
-    caption.hidden = !text;
+    captions.forEach((c, i) => c.classList.toggle('is-current', i === current));
   }
 
   /**
@@ -268,8 +265,20 @@ export function enhanceGallery(gallery: Gallery): void {
     true,
   );
 
-  // Images the build couldn't measure (host unreachable from CI): size them once loaded.
+  // Videos, and images the build couldn't measure: sized once their shape is known. The
+  // stage already reserves the full height for them, so this never moves the page.
   cards.forEach((card, i) => {
+    const video = card.querySelector('video');
+    if (video) {
+      const measure = () => {
+        if (!video.videoWidth) return;
+        ratios[i] = video.videoWidth / video.videoHeight;
+        layout();
+      };
+      if (video.readyState >= 1) measure();
+      else video.addEventListener('loadedmetadata', measure, { once: true });
+      return;
+    }
     if (ratios[i]) return;
     const img = card.querySelector('img');
     if (!img) return;
@@ -285,6 +294,7 @@ export function enhanceGallery(gallery: Gallery): void {
   paint(); // depth classes right away; sizes follow on the first ResizeObserver callback
   new ResizeObserver((entries) => {
     width = entries[0].contentRect.width;
+    height = entries[0].contentRect.height;
     layout(); // also paints
   }).observe(stage);
 }

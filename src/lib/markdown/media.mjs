@@ -121,28 +121,42 @@ async function figureHtml(node) {
   return `<figure class="media media-image ${cls}"${style}>${imgTag(node.url, node.alt, size)}${caption}</figure>`;
 }
 
-/** Two or more images/videos on consecutive lines. */
+/**
+ * Two or more images/videos on consecutive lines.
+ *
+ * The gallery's height must not change while flipping or loading, or the text below would
+ * jump. So everything that decides it is written into the HTML (global.css does the maths,
+ * before any script runs):
+ *  - --min-ar: the narrowest card's aspect ratio; the stack is as tall as that card. Left out
+ *    when any shape is unknown (videos, images the build couldn't read): CSS then reserves
+ *    the maximum height, and those cards are sized inside it once they load.
+ *  - all captions in one slot, the current one visible: the slot is as tall as the longest.
+ */
 async function galleryHtml(images) {
-  const ratios = [];
+  let minAr = Infinity;
+  let unknown = false;
+  const captions = images.map((node) => (node.title && node.title !== 'loop' ? node.title : ''));
   const items = await Promise.all(
     images.map(async (node) => {
       const caption = captionHtml(node.title);
       if (kindOf(node.url) === 'video') {
-        ratios.push(16 / 9);
+        unknown = true; // shape known only once its metadata loads
         return `<figure class="gallery-item gallery-video">${videoTag(node.url, node.alt, node.title)}${caption}</figure>`;
       }
       const size = await probeImage(node.url);
-      if (size) ratios.push(size.width / size.height);
+      if (size) minAr = Math.min(minAr, size.width / size.height);
+      else unknown = true;
       const style = size ? ` style="--ar:${size.width}/${size.height}"` : '';
       return `<figure class="gallery-item"${style}>${imgTag(node.url, node.alt, size)}${caption}</figure>`;
     }),
   );
-  // Strip height: the widest item (capped at 16:9; panoramas letterbox) fills the width,
-  // so a landscape photo on a phone isn't shrunk into a grey band.
-  const fit = Math.min(Math.max(...ratios, 4 / 3), 16 / 9);
+  const style = unknown ? '' : ` style="--min-ar:${+minAr.toFixed(4)}"`;
+  const captionSlot = captions.some(Boolean)
+    ? `<div class="gallery-captions">${captions.map((c, i) => `<p${i === 0 ? ' class="is-current"' : ''}>${esc(c)}</p>`).join('')}</div>`
+    : '';
   return (
-    `<div class="gallery" role="region" aria-roledescription="carousel" aria-label="图集，共 ${images.length} 项" style="--fit-ar:${+fit.toFixed(4)}">` +
-    `<div class="gallery-track" tabindex="0">${items.join('')}</div></div>`
+    `<div class="gallery" role="region" aria-roledescription="carousel" aria-label="图集，共 ${images.length} 项"${style}>` +
+    `<div class="gallery-track" tabindex="0">${items.join('')}</div>${captionSlot}</div>`
   );
 }
 

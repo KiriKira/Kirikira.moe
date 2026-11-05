@@ -588,9 +588,22 @@ h6 {
 }
 
 .prose .gallery-track {
-  /* Height that lets the widest item (--fit-ar, set at build time) fill the width. */
-  --gh: clamp(180px, 100cqw / var(--fit-ar, 1.3333), 440px);
+  /*
+   * The gallery's height is fixed by the HTML alone, so nothing below it ever moves:
+   * cards may be --maxw wide and --maxh tall; the narrowest card (--min-ar, from the build)
+   * sets the height, plus room for the cards peeking out. Without --min-ar (a video or an
+   * image of unknown shape) the full --maxh is reserved. gallery-stack.ts sizes the cards
+   * with the same numbers.
+   */
+  --maxw: 80cqw;
+  --maxh: min(460px, 62vh);
+  --card-h: min(var(--maxw) / var(--min-ar, 0.01), var(--maxh));
+  --gh: var(--card-h);
+  height: calc(var(--card-h) + 34px);
+  /* Room for the ‹ 1 / 5 › row the script adds, so it doesn't push the text when it appears. */
+  margin-bottom: 38px;
   display: flex;
+  align-items: center;
   gap: 10px;
   /* Centred while everything fits (two portraits), start-aligned once it scrolls. */
   justify-content: safe center;
@@ -599,6 +612,13 @@ h6 {
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
   border-radius: var(--radius);
+}
+
+@container (width < 520px) {
+  .prose .gallery-track {
+    --maxw: 86cqw;
+    --maxh: min(420px, 62vh);
+  }
 }
 
 .prose .gallery-track::-webkit-scrollbar {
@@ -635,6 +655,10 @@ h6 {
   max-width: none;
 }
 
+.prose .gallery:has(.gallery-captions) .gallery-item figcaption {
+  display: none; /* shown in the shared slot below (still read by the lightbox) */
+}
+
 .prose .gallery-item figcaption {
   position: absolute;
   inset: auto 0 0;
@@ -651,7 +675,7 @@ h6 {
 .prose .gallery.is-stack .gallery-track {
   display: block;
   position: relative;
-  height: var(--sh, 360px);
+  margin-bottom: 0;
   overflow: visible;
   border-radius: 0;
   /* Vertical scrolling stays with the page; horizontal drags flip cards. */
@@ -724,6 +748,7 @@ h6 {
 }
 
 .prose .gallery-bar {
+  height: 32px; /* + margin-top = the 38px reserved under the track before the script runs */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -785,13 +810,28 @@ h6 {
   background: var(--accent);
 }
 
-.prose .gallery-caption {
-  margin: 6px auto 0;
+/* All captions overlap in one cell: it is as tall as the longest, whichever is shown. */
+.prose .gallery-captions {
+  display: grid;
+  /* padding, not margin: a margin would merge with the 38px reserved under the track before
+     the script runs and make the gallery 6px shorter until then. */
+  margin: 0 auto;
+  padding-top: 6px;
   max-width: 36em;
   font-size: 13px;
   line-height: 1.5;
   text-align: center;
   color: var(--text-faint);
+}
+
+.prose .gallery-captions > p {
+  grid-area: 1 / 1;
+  margin: 0;
+  visibility: hidden;
+}
+
+.prose .gallery-captions > p.is-current {
+  visibility: visible;
 }
 
 @media (prefers-reduced-motion: reduce) {

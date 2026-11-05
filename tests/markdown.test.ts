@@ -41,11 +41,20 @@ describe('standalone images', () => {
 describe('galleries', () => {
   it('turns images on consecutive lines into a carousel', async () => {
     const html = await render('![a](/img/kiri.jpg "一")\n![b](https://media.example/b.webp)\n![c](https://media.example/c.mp4)');
-    expect(html).toMatch(/^<div class="gallery" role="region" aria-roledescription="carousel" aria-label="图集，共 3 项" style="--fit-ar:1.7778">/);
+    // A video / an unreadable image: no --min-ar, so CSS reserves the full height.
+    expect(html).toMatch(/^<div class="gallery" role="region" aria-roledescription="carousel" aria-label="图集，共 3 项"><div class="gallery-track"/);
     expect(html).toContain('<figure class="gallery-item" style="--ar:640/640"><img src="/img/kiri.jpg" alt="a" width="640" height="640"');
     expect(html).toContain('<figcaption>一</figcaption>');
     expect(html).toContain('<figure class="gallery-item"><img src="https://media.example/b.webp"');
     expect(html).toContain('<figure class="gallery-item gallery-video"><video controls');
+    // Every caption in one slot (as tall as the longest), the first one shown.
+    expect(html).toContain('<div class="gallery-captions"><p class="is-current">一</p><p></p><p></p></div></div>');
+  });
+
+  it('gives the gallery the narrowest shape when every size is known (fixed height)', async () => {
+    const html = await render('![a](/img/kiri.jpg)\n![b](/img/kiri.jpg)');
+    expect(html).toMatch(/^<div class="gallery"[^>]* style="--min-ar:1">/);
+    expect(html).not.toContain('gallery-captions');
   });
 
   it('keeps blank-line-separated images as separate figures', async () => {
