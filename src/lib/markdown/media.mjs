@@ -8,7 +8,9 @@ import { probeImage } from './image-size.mjs';
  *                                   (landscape 80%, portrait 50%, square 60%), click to zoom
  *   ![说明](a.webp "图注")          the same, with a caption
  *   ![a](1.webp)                     several images/videos on consecutive lines (no blank
- *   ![b](2.webp)                     line between them) -> swipeable gallery
+ *   ![b](2.webp)                     line between them) -> gallery: a stack of cards in the
+ *                                    browser (src/scripts/gallery-stack.ts), a swipeable
+ *                                    centred strip without JS
  *   ![说明](a.mp4)                   <video controls>; "loop" title = muted autoplay loop (GIF-like)
  *   ![说明](a.mp3)                   <audio controls>
  *   https://www.bilibili.com/video/BV1xx411c7mD   a bare link alone in its paragraph ->

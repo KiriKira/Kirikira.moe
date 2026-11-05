@@ -1,13 +1,14 @@
 /**
  * Browser side of Markdown media (see src/lib/markdown/media.mjs):
  *  - sizes figures whose dimensions weren't known at build time (videos, failed probes)
- *  - adds prev/next buttons, counter and dots to galleries (they swipe natively without JS)
+ *  - turns galleries into a stack of cards (gallery-stack.ts; without JS they stay a strip)
  *  - click/tap any post image to open a zoomable, swipeable lightbox (PhotoSwipe,
  *    downloaded on first use only)
  */
 import 'photoswipe/style.css';
 import type PhotoSwipe from 'photoswipe';
 import type { SlideData } from 'photoswipe';
+import { enhanceGallery } from './gallery-stack';
 
 const orientation = (w: number, h: number) => {
   const r = w / h;
@@ -36,120 +37,7 @@ function sizeUnknownFigures(root: ParentNode) {
   }
 }
 
-// ---------- galleries ----------
-
-function button(cls: string, label: string, text: string) {
-  const b = document.createElement('button');
-  b.type = 'button';
-  b.className = cls;
-  b.setAttribute('aria-label', label);
-  b.textContent = text;
-  return b;
-}
-
-function enhanceGallery(gallery: HTMLElement) {
-  const track = gallery.querySelector<HTMLElement>('.gallery-track')!;
-  const items = [...track.querySelectorAll<HTMLElement>('.gallery-item')];
-  if (items.length < 2) return;
-
-  // Images the build couldn't measure (host unreachable from CI) have no --ar and the
-  // gallery falls back to 4:3, which letterboxes them. Measure here once they load and
-  // let the strip height follow the widest item, exactly like the build-time rule.
-  const arOf = (value: string) => {
-    if (!value) return 0;
-    if (value.includes('/')) {
-      const [a, b] = value.split('/').map(Number);
-      return a && b ? a / b : 0;
-    }
-    const n = Number.parseFloat(value);
-    return Number.isFinite(n) ? n : 0;
-  };
-  const refit = () => {
-    const ratios = items
-      .map((item) => {
-        const known = arOf(item.style.getPropertyValue('--ar'));
-        if (known) return known;
-        const img = item.querySelector('img');
-        return img?.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 0;
-      })
-      .filter((r) => r > 0);
-    if (!ratios.length) return;
-    const fit = Math.min(Math.max(...ratios, 4 / 3), 16 / 9);
-    gallery.style.setProperty('--fit-ar', fit.toFixed(4));
-  };
-  for (const item of items) {
-    if (arOf(item.style.getPropertyValue('--ar'))) continue;
-    const img = item.querySelector('img');
-    if (!img) continue;
-    const apply = () => {
-      if (!img.naturalWidth || !img.naturalHeight) return;
-      item.style.setProperty('--ar', `${img.naturalWidth} / ${img.naturalHeight}`);
-      refit();
-    };
-    if (img.complete) apply();
-    else img.addEventListener('load', apply, { once: true });
-  }
-  refit();
-
-  const prev = button('gallery-btn gallery-prev', '上一张', '‹');
-  const next = button('gallery-btn gallery-next', '下一张', '›');
-  const meta = document.createElement('div');
-  meta.className = 'gallery-meta';
-  const count = document.createElement('span');
-  count.className = 'gallery-count';
-  const dots = document.createElement('div');
-  dots.className = 'gallery-dots';
-  const dotButtons = items.map((_, i) => {
-    const d = button('gallery-dot', `第 ${i + 1} 张`, '');
-    d.addEventListener('click', () => goTo(i));
-    dots.appendChild(d);
-    return d;
-  });
-  // appendChild, not append(): the Workers types sharing this tsconfig redeclare Element.append.
-  meta.appendChild(count);
-  meta.appendChild(dots);
-  for (const el of [prev, next, meta]) gallery.appendChild(el);
-  gallery.classList.add('is-enhanced');
-
-  let current = 0;
-  function goTo(i: number) {
-    const target = items[Math.max(0, Math.min(items.length - 1, i))];
-    track.scrollTo({ left: target.offsetLeft - track.offsetLeft, behavior: 'smooth' });
-  }
-  function update() {
-    // The current item is the one whose left edge is closest to the track's.
-    const left = track.scrollLeft;
-    let best = 0;
-    items.forEach((item, i) => {
-      if (Math.abs(item.offsetLeft - track.offsetLeft - left) < Math.abs(items[best].offsetLeft - track.offsetLeft - left)) best = i;
-    });
-    // At the far right edge the last item may never reach the left edge.
-    if (left + track.clientWidth >= track.scrollWidth - 2) best = items.length - 1;
-    current = best;
-    count.textContent = `${current + 1} / ${items.length}`;
-    dotButtons.forEach((d, i) => d.setAttribute('aria-current', i === current ? 'true' : 'false'));
-    prev.disabled = left <= 2;
-    next.disabled = left + track.clientWidth >= track.scrollWidth - 2;
-    // Don't keep playing videos that were swiped away.
-    items.forEach((item, i) => {
-      if (i !== current) item.querySelector('video')?.pause();
-    });
-  }
-  prev.addEventListener('click', () => goTo(current - 1));
-  next.addEventListener('click', () => goTo(current + 1));
-  let raf = 0;
-  track.addEventListener(
-    'scroll',
-    () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(update);
-    },
-    { passive: true },
-  );
-  new ResizeObserver(update).observe(track);
-  update();
-  (gallery as HTMLElement & { goTo?: (i: number) => void }).goTo = goTo;
-}
+// Galleries: see gallery-stack.ts.
 
 // ---------- lightbox ----------
 
@@ -162,7 +50,7 @@ function slideFor(img: HTMLImageElement): SlideData & { thumb: HTMLImageElement;
   return { src: img.currentSrc || img.src, msrc: img.currentSrc || img.src, width, height, alt: img.alt, thumb: img, caption };
 }
 
-async function openLightbox(images: HTMLImageElement[], index: number, onClose?: (index: number) => void) {
+async function openLightbox(images: HTMLImageElement[], index: number, onChange?: (index: number) => void) {
   pswpModule ??= import('photoswipe');
   const { default: PhotoSwipeCtor } = await pswpModule;
   const slides = images.map(slideFor);
@@ -200,25 +88,26 @@ async function openLightbox(images: HTMLImageElement[], index: number, onClose?:
       },
     });
   });
-  if (onClose) pswp.on('close', () => onClose(pswp.currIndex));
+  // Keep the page in step (a gallery shows the same picture), so closing zooms back onto it.
+  if (onChange) pswp.on('change', () => onChange(pswp.currIndex));
   pswp.init();
 }
 
 function setupLightbox(article: HTMLElement) {
   // Standalone images of the article form one sequence; each gallery is its own.
   const standalone = () => [...article.querySelectorAll<HTMLImageElement>('figure.media-image img, img.img-block')].filter((i) => !i.closest('a'));
+  // Clicks on cards behind the top one never get here (gallery-stack.ts handles them first).
   article.addEventListener('click', (event) => {
     const img = (event.target as HTMLElement).closest?.('img');
     if (!img || img.closest('a')) return;
-    const gallery = img.closest<HTMLElement & { goTo?: (i: number) => void }>('.gallery');
+    const gallery = img.closest<HTMLElement & { goTo?: (i: number, animate?: boolean) => void }>('.gallery');
     if (gallery) {
       const imgs = [...gallery.querySelectorAll<HTMLImageElement>('.gallery-item img')];
+      const all = [...gallery.querySelectorAll('.gallery-item')];
       event.preventDefault();
       void openLightbox(imgs, imgs.indexOf(img), (i) => {
-        // Land the carousel on whatever was last viewed in the lightbox.
         const item = imgs[i]?.closest('.gallery-item');
-        const all = [...gallery.querySelectorAll('.gallery-item')];
-        if (item) gallery.goTo?.(all.indexOf(item));
+        if (item) gallery.goTo?.(all.indexOf(item), false);
       });
       return;
     }

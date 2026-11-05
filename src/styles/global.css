@@ -577,7 +577,10 @@ h6 {
   color: var(--text-faint);
 }
 
-/* Galleries: consecutive images become a swipeable strip (scroll-snap, works without JS). */
+/*
+ * Galleries (consecutive images/videos). Built as a swipeable, centred strip that works
+ * without JS; src/scripts/gallery-stack.ts turns it into a stack of cards (.is-stack).
+ */
 .prose .gallery {
   position: relative;
   margin: 1.8em 0;
@@ -589,10 +592,11 @@ h6 {
   --gh: clamp(180px, 100cqw / var(--fit-ar, 1.3333), 440px);
   display: flex;
   gap: 10px;
+  /* Centred while everything fits (two portraits), start-aligned once it scrolls. */
+  justify-content: safe center;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
-  scroll-behavior: smooth;
   scrollbar-width: none;
   border-radius: var(--radius);
 }
@@ -613,7 +617,7 @@ h6 {
   height: var(--gh);
   aspect-ratio: var(--ar, 4 / 3);
   max-width: 100%;
-  scroll-snap-align: start;
+  scroll-snap-align: center;
   background: var(--surface-muted);
   overflow: hidden;
 }
@@ -643,61 +647,122 @@ h6 {
   pointer-events: none;
 }
 
-.prose .gallery-btn {
+/* ---- stack of cards (JS) ---- */
+.prose .gallery.is-stack .gallery-track {
+  display: block;
+  position: relative;
+  height: var(--sh, 360px);
+  overflow: visible;
+  border-radius: 0;
+  /* Vertical scrolling stays with the page; horizontal drags flip cards. */
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.prose .gallery.is-stack .gallery-item {
+  --d: 0;
   position: absolute;
-  /* Centre on the strip, not on strip + counter row below it. */
-  top: calc((100% - 32px) / 2);
-  translate: 0 -50%;
-  width: 40px;
-  height: 40px;
-  border: 0;
-  border-radius: 50%;
-  font-size: 26px;
-  line-height: 1;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(6px);
+  left: 50%;
+  top: 50%;
+  width: var(--cw);
+  height: var(--ch);
+  aspect-ratio: auto;
+  max-width: none;
+  translate: -50% -50%;
+  /* Depth 0 lies flat on top; each card below sits a little right, up, turned and smaller. */
+  transform: translate(calc(var(--d) * 17px), calc(var(--d) * -9px)) rotate(calc(var(--d) * var(--tilt, 2.4deg)))
+    scale(calc((1 - var(--d) * 0.045) * var(--fit, 1)));
+  z-index: calc(100 - var(--d));
+  border-radius: var(--radius);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14), 0 8px 22px rgba(0, 0, 0, 0.13);
+  transition:
+    transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.3s;
+}
+
+.prose .gallery.is-stack .gallery-item > :is(img, video) {
+  object-fit: cover;
+  -webkit-user-drag: none;
+}
+
+.prose .gallery.is-stack .gallery-item[data-depth='0'] {
+  cursor: zoom-in;
+}
+
+.prose .gallery.is-stack .gallery-item.gallery-video[data-depth='0'] {
+  cursor: auto;
+}
+
+.prose .gallery.is-stack .gallery-item:not([data-depth='0']) {
   cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.2s, background-color 0.2s;
 }
 
-.prose .gallery-prev { left: 8px; }
-.prose .gallery-next { right: 8px; }
-
-.prose .gallery:is(:hover, :focus-within) .gallery-btn:not(:disabled) {
-  opacity: 1;
-}
-
-.prose .gallery-btn:hover {
-  background: rgba(0, 0, 0, 0.7);
-}
-
-.prose .gallery-btn:disabled {
+.prose .gallery.is-stack .gallery-item:not([data-depth='0']) > :is(img, video) {
   pointer-events: none;
 }
 
-/* Touch screens swipe; arrows would only cover the picture. */
-@media (hover: none) {
-  .prose .gallery-btn {
-    display: none;
-  }
+/* Under the visible pile: transparent (fading out once a thrown card is half way). */
+.prose .gallery.is-stack .gallery-item.is-faded {
+  opacity: 0;
+  pointer-events: none;
+  transition-delay: 0s, 0.2s;
 }
 
-.prose .gallery-meta {
+/* Further down: not rendered, so their lazy images aren't fetched yet. */
+.prose .gallery.is-stack .gallery-item.is-hidden {
+  display: none;
+}
+
+.prose .gallery.is-stack .gallery-item.is-dragging {
+  transition: none;
+}
+
+/* Captions live under the stack (the card's own is used by the lightbox). */
+.prose .gallery.is-stack .gallery-item figcaption {
+  display: none;
+}
+
+.prose .gallery-bar {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  margin-top: 10px;
+  gap: 14px;
+  margin-top: 6px;
   font-size: 12px;
   color: var(--text-faint);
   font-variant-numeric: tabular-nums;
 }
 
+.prose .gallery-nav {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--text-muted);
+  background: var(--surface);
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+@media (hover: hover) {
+  .prose .gallery-nav:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+}
+
+.prose .gallery-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .prose .gallery-dots {
   display: flex;
-  flex-wrap: wrap;
   gap: 6px;
 }
 
@@ -718,6 +783,21 @@ h6 {
   border-radius: 4px;
   opacity: 1;
   background: var(--accent);
+}
+
+.prose .gallery-caption {
+  margin: 6px auto 0;
+  max-width: 36em;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--text-faint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prose .gallery.is-stack .gallery-item {
+    transition: none;
+  }
 }
 
 /* Lightbox caption (PhotoSwipe UI element registered in src/scripts/media.ts) */
