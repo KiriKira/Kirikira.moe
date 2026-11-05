@@ -81,8 +81,10 @@ export function enhanceGallery(gallery: Gallery): void {
 
   // ---- layout: every card fits the stage; the stage is as tall as the tallest card ----
   const sizes: { w: number; h: number }[] = cards.map(() => ({ w: 0, h: 0 }));
+  // The width comes from the ResizeObserver: reading clientWidth here would force a layout
+  // per gallery (a post with 91 galleries spent ~250 ms on that alone).
+  let width = 0;
   function layout() {
-    const width = stage.clientWidth;
     if (!width) return;
     const narrow = width < 520;
     const maxW = width * (narrow ? 0.86 : 0.8);
@@ -258,6 +260,9 @@ export function enhanceGallery(gallery: Gallery): void {
     else img.addEventListener('load', measure, { once: true });
   });
 
-  layout(); // also paints
-  new ResizeObserver(layout).observe(stage);
+  paint(); // depth classes right away; sizes follow on the first ResizeObserver callback
+  new ResizeObserver((entries) => {
+    width = entries[0].contentRect.width;
+    layout(); // also paints
+  }).observe(stage);
 }
