@@ -23,6 +23,11 @@ const BEHIND_OVERHANG = 1.16;
 
 type Gallery = HTMLElement & { goTo?: (i: number, animate?: boolean) => void };
 
+/** Stop this module's own animations on a card (not the CSS transitions of its pose). */
+const cancelThrows = (card: HTMLElement) => {
+  for (const a of card.getAnimations()) if (!(a instanceof CSSTransition)) a.cancel();
+};
+
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, text = ''): HTMLElementTagNameMap[K] {
@@ -143,6 +148,32 @@ export function enhanceGallery(gallery: Gallery): void {
     caption.hidden = !text;
   }
 
+  /**
+   * The old top card flies off to the side while fading out, changes layer only once it is
+   * invisible, then fades in again at the bottom of the pile. Changing layer while visible
+   * looked like it passed through the next photo (and how far out it would have to fly to
+   * clear it depends on both cards' sizes).
+   */
+  function throwToBack(card: HTMLElement, dir: number, from: number) {
+    cancelThrows(card);
+    card.style.zIndex = '200';
+    const out = card.animate(
+      [
+        { translate: `calc(-50% + ${from}px) -50%`, rotate: `${from / 28}deg`, opacity: 1 },
+        { translate: `calc(-50% + ${dir * 45}%) -50%`, rotate: `${dir * 8}deg`, opacity: 0 },
+      ],
+      { duration: THROW_MS * 0.55, easing: 'cubic-bezier(.4,0,.8,.6)', fill: 'forwards' },
+    );
+    out.onfinish = () => {
+      card.style.zIndex = '';
+      out.cancel();
+      // Cards deep in a long pile are invisible anyway (is-faded); the others reappear.
+      if (!card.classList.contains('is-faded')) {
+        card.animate([{ opacity: 0 }, { opacity: 1 }], { duration: THROW_MS * 0.5, easing: 'ease-out' });
+      }
+    };
+  }
+
   /** Move to card i; `throwFrom` = the top card's drag offset when a swipe flipped it. */
   function goTo(i: number, animate = true, throwFrom = 0) {
     const target = ((i % n) + n) % n;
@@ -151,28 +182,19 @@ export function enhanceGallery(gallery: Gallery): void {
     const top = cards[current];
     current = target;
     if (animate && !reducedMotion()) {
-      if (forward) {
-        // Throw the old top card aside (left, or the way it was swiped), then tuck it under.
-        const dir = throwFrom > 0 ? 1 : -1;
-        top.style.zIndex = '200';
-        top.animate(
-          [
-            { translate: `calc(-50% + ${throwFrom}px) -50%`, rotate: '0deg' },
-            { translate: `calc(-50% + ${dir * 62}%) -50%`, rotate: `${dir * 9}deg`, offset: 0.45 },
-            { translate: '-50% -50%', rotate: '0deg' },
-          ],
-          { duration: THROW_MS, easing: 'cubic-bezier(.3,.7,.3,1)' },
-        );
-        setTimeout(() => (top.style.zIndex = ''), THROW_MS * 0.45);
-      } else {
-        // The card coming back slides in over the pile from the side it was swiped to.
+      if (forward) throwToBack(top, throwFrom > 0 ? 1 : -1, throwFrom);
+      else {
+        // The card coming back slides in over the pile from the side it was swiped to. It is
+        // on top (and transparent) from its first frame, so it never passes through a card.
+        const back = cards[current];
         const dir = throwFrom < 0 ? -1 : 1;
-        cards[current].animate(
+        cancelThrows(back);
+        back.animate(
           [
-            { translate: `calc(-50% + ${dir * 62}%) -50%`, rotate: `${dir * 9}deg`, opacity: 0 },
+            { translate: `calc(-50% + ${dir * 45}%) -50%`, rotate: `${dir * 8}deg`, opacity: 0 },
             { translate: '-50% -50%', rotate: '0deg', opacity: 1 },
           ],
-          { duration: THROW_MS * 0.8, easing: 'cubic-bezier(.2,.8,.2,1)' },
+          { duration: THROW_MS * 0.75, easing: 'cubic-bezier(.2,.8,.2,1)' },
         );
       }
     }
