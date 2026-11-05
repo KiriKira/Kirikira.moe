@@ -131,10 +131,12 @@ def pass_split_images(lines: list[str]) -> tuple[list[str], int]:
     i = 0
     while i < len(lines):
         line = lines[i]
-        if line.lstrip().startswith('![') and line.count('(') > line.count(')'):
+        # An image whose URL was wrapped onto the next line: the line stops before the final ")".
+        # Counting parentheses is not enough — captions contain "（…）" and stray "(".
+        if line.lstrip().startswith('![') and not line.rstrip().endswith(')'):
             merged = line
             j = i + 1
-            while j < len(lines) and merged.count('(') > merged.count(')'):
+            while j < len(lines) and not merged.rstrip().endswith(')'):
                 merged = merged.rstrip() + lines[j].strip()
                 j += 1
             out.append(merged)
@@ -156,6 +158,67 @@ def pass_titles(lines: list[str]) -> tuple[list[str], int]:
             n += 1
         else:
             out.append(line)
+    return out, n
+
+
+def pass_split_joined(lines: list[str]) -> tuple[list[str], int]:
+    """`![a](x)![[b](y)` on one line renders inline; one image per line instead."""
+    out, n = [], 0
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith('![') and ')!![' not in stripped and stripped.count('![') > 1:
+            parts = re.split(r'(?<=\))(?=!\[)', stripped)
+            out.extend(parts)
+            n += len(parts) - 1
+        else:
+            out.append(line)
+    return out, n
+
+
+def pass_strip_comments(lines: list[str]) -> tuple[list[str], int]:
+    """Migration bookkeeping (`<!-- uuid -->`) glued to an image made it render inline."""
+    out, n = [], 0
+    for line in lines:
+        if '<!--' in line:
+            cleaned = re.sub(r'\s*<!--.*?-->', '', line).rstrip()
+            if cleaned != line:
+                n += 1
+            out.append(cleaned)
+        else:
+            out.append(line)
+    return out, n
+
+
+def pass_orphan_divs(lines: list[str]) -> tuple[list[str], int]:
+    """A centred <div> left behind around Markdown images serves no purpose."""
+    out, n = [], 0
+    for line in lines:
+        if re.fullmatch(r'\s*<div\b[^>]*text-align:\s*center[^>]*>\s*', line) or line.strip() == '</div>':
+            n += 1
+            continue
+        out.append(line)
+    return out, n
+
+
+def pass_unstick_media(lines: list[str]) -> tuple[list[str], int]:
+    """`![a](x)正文` on one line renders the image inline; put it in its own paragraph."""
+    media = r'!\[[^\]]*\]\([^)\s]+(?:\s+"[^"]*")?\)'
+    out, n = [], 0
+    for line in lines:
+        if line.startswith(' ') or not line.strip():
+            out.append(line)
+            continue
+        m = re.match(r'^(' + media + r')\s*(\S.*)$', line.strip())
+        if m:
+            out.extend([m.group(1), '', m.group(2)])
+            n += 1
+            continue
+        m = re.match(r'^(.+?)\s*(' + media + r')$', line.strip())
+        if m and not m.group(1).startswith('!'):
+            out.extend([m.group(1), '', m.group(2)])
+            n += 1
+            continue
+        out.append(line)
     return out, n
 
 
@@ -201,7 +264,7 @@ def main() -> int:
     args = sys.argv[1:]
     write = '--check' not in args
     targets = [a for a in args if not a.startswith('--')] or sorted(glob.glob('src/content/posts/*.md'))
-    totals = {'images': 0, 'captions': 0, 'videos': 0, 'titles': 0, 'blanks': 0}
+    totals = {'images': 0, 'captions': 0, 'videos': 0, 'titles': 0, 'joined': 0, 'comments': 0, 'divs': 0, 'unstick': 0, 'blanks': 0}
     for path in targets:
         raw = open(path, encoding='utf-8').read()
         lines = raw.split('\n')
@@ -210,12 +273,20 @@ def main() -> int:
         lines, n_cap = pass_captions(lines)
         lines, n_vid = pass_videos(lines)
         lines, n_title = pass_titles(lines)
+        lines, n_split2 = pass_split_joined(lines)
+        lines, n_comment = pass_strip_comments(lines)
+        lines, n_div = pass_orphan_divs(lines)
+        lines, n_unstick = pass_unstick_media(lines)
         lines, n_blank = pass_spacing(lines)
         new = '\n'.join(lines)
         totals['images'] += n_img
         totals['captions'] += n_cap
         totals['videos'] += n_vid
         totals['titles'] += n_title
+        totals['joined'] += n_split2
+        totals['comments'] += n_comment
+        totals['divs'] += n_div
+        totals['unstick'] += n_unstick
         totals['blanks'] += n_blank
         if write and new != raw:
             open(path, 'w', encoding='utf-8').write(new)
