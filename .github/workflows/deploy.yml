@@ -4,7 +4,6 @@
 #   - the commit gets a red ✗ (and GitHub emails whoever pushed, per their notification settings);
 #   - an issue labelled `deploy-failed` is opened (GitHub notifies the repo's watchers), and
 #     closed automatically by the next successful deploy;
-#   - a Telegram message, if TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID are set (same as the watchdog).
 #
 # scripts/deploy.mjs does the deploying: D1 migrations, upload a new version WITHOUT traffic,
 # smoke-test it, promote, smoke-test the live URL, roll back on failure. Production only ever
@@ -26,7 +25,6 @@ on:
       - 'docs/**'
       - 'README.md'
       - 'legacy/**'
-      - '.github/workflows/watchdog.yml'
       - '.github/workflows/ci.yml'
   workflow_dispatch:
 
@@ -81,7 +79,7 @@ jobs:
           if [ -n "$ACCOUNT_ID" ]; then export CLOUDFLARE_ACCOUNT_ID="$ACCOUNT_ID"; fi
           node scripts/deploy.mjs 2>&1 | tee deploy.log
 
-      - name: Report (issue + Telegram)
+      - name: Report (issue on failure)
         if: always() && (success() || failure())
         id: report
         uses: actions/github-script@v7
@@ -118,14 +116,3 @@ jobs:
               change = 'recovered';
             }
             core.setOutput('change', change);
-            core.setOutput('text', ok ? `✅ ${branch} deploys again: ${commit}` : `❌ Deploy of ${branch} failed: ${commit}\n${run}`);
-
-      - name: Telegram (only when the state changes)
-        if: always() && steps.report.outputs.change != ''
-        env:
-          TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
-          TEXT: ${{ steps.report.outputs.text }}
-        run: |
-          [ -n "$TOKEN" ] && [ -n "$CHAT" ] || exit 0
-          curl -sS -X POST "https://api.telegram.org/bot$TOKEN/sendMessage" --data-urlencode "chat_id=$CHAT" --data-urlencode "text=$TEXT" > /dev/null
